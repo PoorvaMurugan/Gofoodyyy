@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 
-interface Feature {
+export interface Feature {
     icon: ReactNode;
     title: string;
     description: string;

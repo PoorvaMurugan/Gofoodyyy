@@ -2,32 +2,22 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-    users: defineTable({
+    dishes: defineTable({
         name: v.string(),
-        email: v.string(),
-        role: v.union(
-            v.literal("customer"),
-            v.literal("admin"),
-            v.literal("delivery")
-        ),
-        createdAt: v.number(),
-    }),
-
-    menuItems: defineTable({
-        name: v.string(),
-        description: v.string(),
-        price: v.number(),
-        imageUrl: v.string(),
         category: v.string(),
+        price: v.number(),
+        serving: v.string(),
+        rating: v.number(),
+        image: v.string(),
+        description: v.string(),
+        nutrition: v.string(),
+        type: v.union(v.literal("veg"), v.literal("nonveg")),
         isAvailable: v.boolean(),
     }),
-
-    cartItems: defineTable({
-        userId: v.id("users"),
-        menuItemId: v.id("menuItems"),
-        quantity: v.number(),
+    users: defineTable({
+        email: v.string(),
+        name: v.string(),
+        role: v.string(),
         createdAt: v.number(),
     }),
-
-
 });

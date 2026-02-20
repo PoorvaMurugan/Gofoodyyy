@@ -2,35 +2,46 @@
 
 import CategoryCard, { Category } from "./CategoryCard";
 
-const categories: Category[] = [
-    {
-        name: "Pizza",
-        image:
-            "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800&q=80",
-    },
-    {
-        name: "Burger",
-        image:
-            "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
-    },
-    {
-        name: "Pasta",
-        image:
-            "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80",
-    },
-    {
-        name: "Drinks",
-        image:
-            "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
-    },
-    {
-        name: "Desserts",
-        image:
-            "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800&q=80",
-    },
-];
+type CategoriesSectionProps = {
+    data: {
+        title?: string;
+        subtitle?: string;
+        categories?: Category[];
+    };
+};
 
-export default function CategoriesSection() {
+export default function CategoriesSection({ data }: CategoriesSectionProps) {
+    // Fallback to static categories if no DB data yet
+    const fallbackCategories: Category[] = [
+        {
+            name: "Pizza",
+            image:
+                "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800&q=80",
+        },
+        {
+            name: "Burger",
+            image:
+                "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
+        },
+        {
+            name: "Pasta",
+            image:
+                "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80",
+        },
+        {
+            name: "Drinks",
+            image:
+                "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80",
+        },
+        {
+            name: "Desserts",
+            image:
+                "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800&q=80",
+        },
+    ];
+
+    const categories = data?.categories ?? fallbackCategories;
+
     return (
         <section className="py-20 bg-gradient-to-b from-white to-purple-50">
             <div className="max-w-7xl mx-auto px-6">
@@ -38,10 +49,10 @@ export default function CategoriesSection() {
                 {/* Section Title */}
                 <div className="text-center mb-14">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-800">
-                        Explore Categories
+                        {data?.title ?? "Explore Categories"}
                     </h2>
                     <p className="text-gray-500 mt-3 text-lg">
-                        Choose your favorite delicious meals
+                        {data?.subtitle ?? "Choose your favorite delicious meals"}
                     </p>
                 </div>
 

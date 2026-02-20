@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CartPage() {
     const {
@@ -14,34 +15,52 @@ export default function CartPage() {
         totalPrice,
     } = useCart();
 
+    const router = useRouter();
+
+    const deliveryFee = totalPrice > 499 ? 0 : 40;
+    const tax = Math.round(totalPrice * 0.05);
+    const grandTotal = totalPrice + deliveryFee + tax;
+
+    const handleCheckout = () => {
+        if (cart.length === 0) return;
+        console.log("Navigating to checkout...");
+        router.push("/checkout");
+    };
+
     return (
         <section className="min-h-screen bg-purple-50 py-16 px-6">
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg p-8">
+            <div className="max-w-7xl mx-auto">
 
-                <h1 className="text-3xl font-bold text-purple-700 mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold text-purple-700 mb-10">
                     Your Cart
                 </h1>
 
                 {cart.length === 0 ? (
-                    <div className="text-center space-y-4">
-                        <p className="text-gray-500">Your cart is empty 🛒</p>
+                    <div className="bg-white rounded-3xl shadow-lg p-12 text-center space-y-6">
+                        <p className="text-gray-500 text-lg">
+                            Your cart is empty 🛒
+                        </p>
+
                         <Link
                             href="/menu"
-                            className="bg-purple-600 text-white px-6 py-2 rounded-xl"
+                            className="inline-block bg-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:scale-105 transition"
                         >
                             Browse Menu
                         </Link>
                     </div>
                 ) : (
-                    <>
-                        <div className="space-y-6">
+                    <div className="grid lg:grid-cols-3 gap-10">
+
+                        {/* LEFT - CART ITEMS */}
+                        <div className="lg:col-span-2 bg-white rounded-3xl shadow-lg p-8 space-y-8">
+
                             {cart.map((item) => (
                                 <div
                                     key={item.id}
-                                    className="flex items-center justify-between border-b pb-4"
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative w-20 h-20 rounded-xl overflow-hidden">
+                                    <div className="flex items-center gap-5">
+                                        <div className="relative w-24 h-24 rounded-xl overflow-hidden">
                                             <Image
                                                 src={item.image}
                                                 alt={item.name}
@@ -54,13 +73,18 @@ export default function CartPage() {
                                             <h3 className="font-semibold text-lg">
                                                 {item.name}
                                             </h3>
-                                            <p className="text-purple-700 font-bold">
-                                                ₹{item.price}
+
+                                            <p className="text-gray-500 text-sm">
+                                                ₹{item.price} × {item.quantity}
+                                            </p>
+
+                                            <p className="text-purple-700 font-bold mt-1">
+                                                ₹{item.price * item.quantity}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-6 mt-4 sm:mt-0">
 
                                         {/* Quantity */}
                                         <div className="flex items-center gap-3 bg-purple-100 px-4 py-2 rounded-full">
@@ -68,7 +92,9 @@ export default function CartPage() {
                                                 <Minus size={18} />
                                             </button>
 
-                                            <span>{item.quantity}</span>
+                                            <span className="font-medium">
+                                                {item.quantity}
+                                            </span>
 
                                             <button onClick={() => increaseQty(item.id)}>
                                                 <Plus size={18} />
@@ -82,28 +108,72 @@ export default function CartPage() {
                                         >
                                             <Trash2 size={20} />
                                         </button>
-
                                     </div>
                                 </div>
                             ))}
+
                         </div>
 
-                        {/* Total Section */}
-                        <div className="mt-10 border-t pt-6 flex justify-between items-center">
+                        {/* RIGHT - SUMMARY */}
+                        <div className="bg-white rounded-3xl shadow-lg p-8 h-fit sticky top-28 space-y-6">
+
                             <h2 className="text-xl font-semibold">
-                                Total:
+                                Order Summary
                             </h2>
 
-                            <span className="text-2xl font-bold text-purple-700">
-                                ₹{totalPrice}
-                            </span>
+                            <div className="space-y-4 text-gray-600">
+
+                                <div className="flex justify-between">
+                                    <span>Subtotal</span>
+                                    <span>₹{totalPrice}</span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                    <span>Delivery Fee</span>
+                                    <span>
+                                        {deliveryFee === 0 ? (
+                                            <span className="text-green-600 font-medium">
+                                                Free
+                                            </span>
+                                        ) : (
+                                            `₹${deliveryFee}`
+                                        )}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                    <span>GST (5%)</span>
+                                    <span>₹{tax}</span>
+                                </div>
+
+                                <div className="border-t pt-4 flex justify-between text-lg font-semibold text-gray-800">
+                                    <span>Total</span>
+                                    <span className="text-purple-700">
+                                        ₹{grandTotal}
+                                    </span>
+                                </div>
+
+                            </div>
+
+                            {deliveryFee > 0 && (
+                                <p className="text-sm text-gray-500">
+                                    Add ₹{499 - totalPrice} more to get free delivery 🚚
+                                </p>
+                            )}
+
+                            {/* ✅ WORKING BUTTON */}
+                            <button
+                                onClick={handleCheckout}
+                                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-xl font-semibold hover:scale-105 transition"
+                            >
+                                Proceed to Checkout
+                            </button>
+
                         </div>
 
-                        <button className="mt-6 w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-xl font-semibold hover:scale-105 transition">
-                            Proceed to Checkout
-                        </button>
-                    </>
+                    </div>
                 )}
+
             </div>
         </section>
     );

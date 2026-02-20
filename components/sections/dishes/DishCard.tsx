@@ -4,8 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 
+/* =========================
+   FIXED: id is string
+========================= */
 export interface Dish {
-    id: number;
+    id: string;   // ✅ changed from number → string
     name: string;
     price: number;
     rating: number;
@@ -77,7 +80,7 @@ export default function DishCard({
                     </span>
                 </div>
 
-                {/* 🔥 Dynamic Add Button */}
+                {/* Dynamic Add Button */}
                 <div className="mt-4">
                     {quantity === 0 ? (
                         <button

@@ -3,8 +3,8 @@ import { v } from "convex/values";
 
 export const createUser = mutation({
     args: {
-        name: v.string(),
         email: v.string(),
+        name: v.string(),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
@@ -14,11 +14,10 @@ export const createUser = mutation({
 
         if (existing) return existing._id;
 
-
         return await ctx.db.insert("users", {
-            name: args.name,
             email: args.email,
-            role: "customer",
+            name: args.name,
+            role: "user",
             createdAt: Date.now(),
         });
     },
