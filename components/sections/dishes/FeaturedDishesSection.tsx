@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
     Dialog,
     DialogContent,
+    DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useCart } from "@/context/CartContext";
@@ -37,13 +38,13 @@ export default function FeaturedDishesSection({
     const router = useRouter();
     const user = useUser();
 
-    const { cart, addToCart, increaseQty, decreaseQty } = useCart();
+    const { cart, addToCart, increaseQty, decreaseQty } =
+        useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } =
         useWishlist();
 
     const [selectedDish, setSelectedDish] =
         useState<FullDish | null>(null);
-    const [quantity, setQuantity] = useState(1);
 
     const requireAuth = (action: () => void) => {
         if (!user) {
@@ -53,9 +54,6 @@ export default function FeaturedDishesSection({
         action();
     };
 
-    /* ======================
-       FIXED: STRING IDs
-    ======================= */
     const fallbackDishes: FullDish[] = [
         {
             id: "dish-1",
@@ -75,11 +73,9 @@ export default function FeaturedDishesSection({
             price: 249,
             rating: 4.5,
             type: "nonveg",
-            description:
-                "Juicy beef patty loaded with cheese and house sauce.",
+            description: "Juicy beef patty loaded with cheese and house sauce.",
             nutrition: "Calories: 450 | Protein: 22g",
-            image:
-                "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
+            image: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
         },
         {
             id: "dish-3",
@@ -87,11 +83,9 @@ export default function FeaturedDishesSection({
             price: 299,
             rating: 4.6,
             type: "veg",
-            description:
-                "Rich creamy alfredo sauce tossed with fresh herbs.",
+            description: "Rich creamy alfredo sauce tossed with fresh herbs.",
             nutrition: "Calories: 360 | Protein: 15g",
-            image:
-                "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80",
+            image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80",
         },
         {
             id: "dish-4",
@@ -99,11 +93,9 @@ export default function FeaturedDishesSection({
             price: 199,
             rating: 4.8,
             type: "veg",
-            description:
-                "Warm chocolate cake with molten lava center.",
+            description: "Warm chocolate cake with molten lava center.",
             nutrition: "Calories: 280 | Sugar: 18g",
-            image:
-                "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800&q=80",
+            image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800&q=80",
         },
     ];
 
@@ -117,27 +109,22 @@ export default function FeaturedDishesSection({
                         {data?.title ?? "Popular Dishes"}
                     </h2>
                     <p className="text-gray-500 mt-3 text-lg">
-                        {data?.subtitle ?? "Most loved by our customers"}
+                        {data?.subtitle ??
+                            "Most loved by our customers"}
                     </p>
                 </div>
 
                 <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
                     {dishes.map((dish) => {
-                        const cartItem = cart.find((c) => c.id === dish.id);
+                        const cartItem = cart.find(
+                            (c) => c.id === dish.id
+                        );
                         const qty = cartItem?.quantity || 0;
                         const inWishlist = isInWishlist(dish.id);
 
                         return (
                             <div key={dish.id} className="relative">
-                                <div
-                                    className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-xs font-semibold text-white shadow-md ${dish.type === "veg"
-                                            ? "bg-green-500"
-                                            : "bg-red-500"
-                                        }`}
-                                >
-                                    {dish.type === "veg" ? "Veg" : "Non-Veg"}
-                                </div>
-
+                                {/* Wishlist */}
                                 <button
                                     onClick={() =>
                                         requireAuth(() => {
@@ -165,12 +152,13 @@ export default function FeaturedDishesSection({
                                     />
                                 </button>
 
+                                {/* Controlled DishCard */}
                                 <DishCard
                                     dish={dish}
-                                    onClick={() => {
-                                        setSelectedDish(dish);
-                                        setQuantity(1);
-                                    }}
+                                    quantity={qty}
+                                    onClick={() =>
+                                        setSelectedDish(dish)
+                                    }
                                     onAdd={() =>
                                         requireAuth(() =>
                                             addToCart({
@@ -181,38 +169,134 @@ export default function FeaturedDishesSection({
                                             })
                                         )
                                     }
+                                    onIncrease={() =>
+                                        requireAuth(() =>
+                                            increaseQty(dish.id)
+                                        )
+                                    }
+                                    onDecrease={() =>
+                                        requireAuth(() =>
+                                            decreaseQty(dish.id)
+                                        )
+                                    }
                                 />
 
-                                {qty > 0 && (
-                                    <div className="absolute bottom-4 left-4 right-4 bg-purple-600 text-white flex justify-between items-center px-4 py-2 rounded-xl">
-                                        <button
-                                            onClick={() =>
-                                                requireAuth(() =>
-                                                    decreaseQty(dish.id)
-                                                )
-                                            }
-                                        >
-                                            <Minus size={16} />
-                                        </button>
-                                        <span>{qty}</span>
-                                        <button
-                                            onClick={() =>
-                                                requireAuth(() =>
-                                                    increaseQty(dish.id)
-                                                )
-                                            }
-                                        >
-                                            <Plus size={16} />
-                                        </button>
-                                    </div>
-                                )}
+                                {/* View Details */}
+                                <p
+                                    onClick={() =>
+                                        setSelectedDish(dish)
+                                    }
+                                    className="mt-3 text-sm text-purple-600 underline cursor-pointer hover:text-purple-800"
+                                >
+                                    View Details
+                                </p>
                             </div>
                         );
                     })}
                 </div>
-
-                {/* Dialog remains same */}
             </div>
+
+            {/* ================= DIALOG ================= */}
+            <Dialog
+                open={!!selectedDish}
+                onOpenChange={() => setSelectedDish(null)}
+            >
+                <DialogContent className="max-w-3xl rounded-3xl">
+                    {selectedDish && (
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div className="relative h-64 md:h-full w-full rounded-2xl overflow-hidden">
+                                <Image
+                                    src={selectedDish.image}
+                                    alt={selectedDish.name}
+                                    fill
+                                    className="object-cover"
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl font-bold">
+                                        {selectedDish.name}
+                                    </DialogTitle>
+                                </DialogHeader>
+
+                                <p className="text-purple-700 font-semibold text-lg">
+                                    ₹{selectedDish.price}
+                                </p>
+
+                                <p className="text-gray-600 text-sm">
+                                    {selectedDish.description}
+                                </p>
+
+                                <div className="bg-purple-50 p-4 rounded-xl">
+                                    <h4 className="font-semibold mb-2">
+                                        Nutrition Info
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                        {selectedDish.nutrition}
+                                    </p>
+                                </div>
+
+                                {/* Controlled Quantity in Dialog */}
+                                {(() => {
+                                    const cartItem = cart.find(
+                                        (c) =>
+                                            c.id === selectedDish.id
+                                    );
+                                    const qty =
+                                        cartItem?.quantity || 0;
+
+                                    return qty === 0 ? (
+                                        <button
+                                            onClick={() =>
+                                                requireAuth(() =>
+                                                    addToCart({
+                                                        id: selectedDish.id,
+                                                        name: selectedDish.name,
+                                                        price:
+                                                            selectedDish.price,
+                                                        image:
+                                                            selectedDish.image,
+                                                    })
+                                                )
+                                            }
+                                            className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold"
+                                        >
+                                            Add
+                                        </button>
+                                    ) : (
+                                        <div className="flex justify-between items-center bg-purple-600 text-white px-6 py-3 rounded-xl">
+                                            <button
+                                                onClick={() =>
+                                                    decreaseQty(
+                                                        selectedDish.id
+                                                    )
+                                                }
+                                            >
+                                                <Minus size={18} />
+                                            </button>
+
+                                            <span className="text-lg font-semibold">
+                                                {qty}
+                                            </span>
+
+                                            <button
+                                                onClick={() =>
+                                                    increaseQty(
+                                                        selectedDish.id
+                                                    )
+                                                }
+                                            >
+                                                <Plus size={18} />
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </section>
     );
 }

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as categories from "../categories.js";
 import type * as dishes from "../dishes.js";
 import type * as users from "../users.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  categories: typeof categories;
   dishes: typeof dishes;
   users: typeof users;
 }>;

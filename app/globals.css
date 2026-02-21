@@ -120,7 +120,20 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.input-style {
+  @apply border border-gray-200 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 rounded-xl p-3 outline-none transition;
+}
+
+.toggle-btn {
+  @apply px-4 py-2 rounded-lg border transition;
+}
+
+.toggle-btn.active {
+  @apply bg-[#7C3AED] text-white border-[#7C3AED];
 }

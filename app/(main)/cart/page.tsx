@@ -28,7 +28,7 @@ export default function CartPage() {
     };
 
     return (
-        <section className="min-h-screen bg-purple-50 py-16 px-6">
+        <section className="min-h-screen bg-purple-50 pt-28 pb-16 px-6">
             <div className="max-w-7xl mx-auto">
 
                 <h1 className="text-3xl md:text-4xl font-bold text-purple-700 mb-10">

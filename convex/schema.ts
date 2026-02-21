@@ -13,6 +13,13 @@ export default defineSchema({
         nutrition: v.string(),
         type: v.union(v.literal("veg"), v.literal("nonveg")),
         isAvailable: v.boolean(),
+        isDeleted: v.boolean(),
+    }),
+
+    categories: defineTable({
+        name: v.string(),
+        image: v.string(),
+        isActive: v.boolean(),
     }),
     users: defineTable({
         email: v.string(),

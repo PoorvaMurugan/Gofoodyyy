@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { stackClientApp } from "../stack/client";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 
 import { ConvexClientProvider } from "@/lib/convex-provider";
@@ -17,8 +18,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Food Delivery App",
-  description: "Single Restaurant Food Delivery Platform",
+  title: {
+    default: "Gofoodyyy",
+    template: "%s | Gofoodyyy",
+  },
+  description: "Fresh & delicious food delivered fast",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -34,7 +41,13 @@ export default function RootLayout({
         <StackProvider app={stackClientApp}>
           <StackTheme>
             <ConvexClientProvider>
-              {children}
+              <Suspense
+                fallback={
+                  <div className="min-h-screen bg-purple-50" />
+                }
+              >
+                {children}
+              </Suspense>
             </ConvexClientProvider>
           </StackTheme>
         </StackProvider>
