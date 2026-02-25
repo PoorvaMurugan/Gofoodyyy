@@ -19,6 +19,7 @@ import {
 import { useState, useMemo } from "react";
 
 export default function AdminUsersPage() {
+
     const users = useQuery(api.users.getAllUsers);
     const updateUser = useMutation(api.users.updateUser);
     const toggleBlock = useMutation(api.users.toggleBlockUser);
@@ -29,10 +30,10 @@ export default function AdminUsersPage() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    if (!users) return <div className="p-6">Loading...</div>;
-
-    // 🔎 Filter Logic
+    // ✅ Always run hooks
     const filteredUsers = useMemo(() => {
+        if (!users) return [];
+
         return users.filter((user) => {
             const matchesSearch =
                 user.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -47,6 +48,9 @@ export default function AdminUsersPage() {
             return matchesSearch && matchesRole && matchesStatus;
         });
     }, [users, search, roleFilter, statusFilter]);
+
+    // ✅ AFTER hooks
+    if (!users) return <div className="p-6">Loading...</div>;
 
     return (
         <div className="p-8 space-y-6">
@@ -83,7 +87,6 @@ export default function AdminUsersPage() {
                     </select>
                 </div>
 
-                {/* Count */}
                 <div className="text-sm text-gray-600">
                     Showing {filteredUsers.length} of {users.length} users
                 </div>
@@ -94,13 +97,13 @@ export default function AdminUsersPage() {
                 <table className="min-w-full table-fixed border-collapse text-sm">
                     <thead className="bg-violet-50">
                         <tr>
-                            <th className="px-6 py-4 text-left font-semibold w-1/6">Name</th>
-                            <th className="px-6 py-4 text-left font-semibold w-1/4">Email</th>
-                            <th className="px-6 py-4 text-left font-semibold w-1/6">Role</th>
-                            <th className="px-6 py-4 text-left font-semibold w-1/6">Status</th>
-                            <th className="px-6 py-4 text-left font-semibold w-1/6">Blocked</th>
-                            <th className="px-6 py-4 text-left font-semibold w-1/6">Join Date</th>
-                            <th className="px-6 py-4 text-center font-semibold w-1/12">Actions</th>
+                            <th className="px-6 py-4 text-left font-semibold">Name</th>
+                            <th className="px-6 py-4 text-left font-semibold">Email</th>
+                            <th className="px-6 py-4 text-left font-semibold">Role</th>
+                            <th className="px-6 py-4 text-left font-semibold">Status</th>
+                            <th className="px-6 py-4 text-left font-semibold">Blocked</th>
+                            <th className="px-6 py-4 text-left font-semibold">Join Date</th>
+                            <th className="px-6 py-4 text-center font-semibold">Actions</th>
                         </tr>
                     </thead>
 
@@ -162,9 +165,10 @@ export default function AdminUsersPage() {
                                     )}
                                 </td>
 
-                                {/* JOIN DATE */}
                                 <td className="px-6 py-4">
-                                    {new Date(user.createdAt).toLocaleDateString("en-GB")}
+                                    {user.createdAt
+                                        ? new Date(user.createdAt).toLocaleDateString("en-GB")
+                                        : "N/A"}
                                 </td>
 
                                 <td className="px-6 py-4 text-center">
@@ -230,9 +234,11 @@ export default function AdminUsersPage() {
     );
 }
 
-/* USER DETAILS MODAL */
+
+/* ========================= MODAL ========================= */
 
 function UserDetailsModal({ user, onClose }: any) {
+
     const addresses = useQuery(
         api.addresses.getUserAddresses,
         { userId: user._id }
@@ -241,6 +247,7 @@ function UserDetailsModal({ user, onClose }: any) {
     return (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl w-[500px] max-h-[80vh] overflow-y-auto shadow-xl">
+
                 <h2 className="text-lg font-semibold mb-4">
                     User Details
                 </h2>
@@ -252,7 +259,7 @@ function UserDetailsModal({ user, onClose }: any) {
                     <p><strong>Gender:</strong> {user.gender || "Not added"}</p>
                     <p><strong>DOB:</strong> {user.dob || "Not added"}</p>
                     <p><strong>Bio:</strong> {user.bio || "Not added"}</p>
-                    <p><strong>Join Date:</strong> {new Date(user.createdAt).toLocaleString("en-GB")}</p>
+                    <p><strong>Join Date:</strong> {user.createdAt ? new Date(user.createdAt).toLocaleString("en-GB") : "N/A"}</p>
                     <p><strong>Role:</strong> {user.role}</p>
                     <p><strong>Status:</strong> {user.status}</p>
                     <p><strong>Blocked:</strong> {user.isBlocked ? "Yes" : "No"}</p>
@@ -301,6 +308,7 @@ function UserDetailsModal({ user, onClose }: any) {
                         Close
                     </button>
                 </div>
+
             </div>
         </div>
     );
