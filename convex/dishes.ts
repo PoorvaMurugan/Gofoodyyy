@@ -31,12 +31,69 @@ export const getAllDishes = query({
 });
 
 /* ======================
+   GET ACTIVE DISHES
+   (Available Stock > 0)
+====================== */
+export const getActiveDishes = query({
+    handler: async (ctx) => {
+        return await ctx.db
+            .query("dishes")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("isDeleted"), false),
+                    q.gt(q.field("stock"), 0)
+                )
+            )
+            .collect();
+    },
+});
+
+/* ======================
+   GET LOW STOCK DISHES
+   (Stock <= Threshold AND Stock > 0)
+====================== */
+export const getLowStockDishes = query({
+    handler: async (ctx) => {
+        return await ctx.db
+            .query("dishes")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("isDeleted"), false),
+                    q.and(
+                        q.lte(q.field("stock"), q.field("threshold")),
+                        q.gt(q.field("stock"), 0)
+                    )
+                )
+            )
+            .collect();
+    },
+});
+
+/* ======================
+   GET OUT OF STOCK
+   (Stock === 0)
+====================== */
+export const getOutOfStockDishes = query({
+    handler: async (ctx) => {
+        return await ctx.db
+            .query("dishes")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("isDeleted"), false),
+                    q.eq(q.field("stock"), 0)
+                )
+            )
+            .collect();
+    },
+});
+
+/* ======================
    ADD DISH
 ====================== */
 export const addDish = mutation({
     args: {
         name: v.string(),
-        category: v.string(),
+        categoryId: v.id("categories"),
         price: v.number(),
         serving: v.string(),
         rating: v.number(),
@@ -44,11 +101,16 @@ export const addDish = mutation({
         description: v.string(),
         nutrition: v.string(),
         type: v.union(v.literal("veg"), v.literal("nonveg")),
+        stock: v.number(),
+        threshold: v.number(),
     },
     handler: async (ctx, args) => {
         await ctx.db.insert("dishes", {
             ...args,
-            isAvailable: true,
+
+            // ✅ Availability ONLY depends on stock > 0
+            isAvailable: args.stock > 0,
+
             isDeleted: false,
         });
     },
@@ -65,7 +127,7 @@ export const deleteDish = mutation({
 });
 
 /* ======================
-   TOGGLE AVAILABILITY
+   TOGGLE AVAILABILITY (Manual override if needed)
 ====================== */
 export const toggleAvailability = mutation({
     args: { id: v.id("dishes") },
@@ -79,11 +141,14 @@ export const toggleAvailability = mutation({
     },
 });
 
+/* ======================
+   UPDATE DISH
+====================== */
 export const updateDish = mutation({
     args: {
         id: v.id("dishes"),
         name: v.string(),
-        category: v.string(),
+        categoryId: v.id("categories"),
         price: v.number(),
         serving: v.string(),
         rating: v.number(),
@@ -91,18 +156,17 @@ export const updateDish = mutation({
         description: v.string(),
         nutrition: v.string(),
         type: v.union(v.literal("veg"), v.literal("nonveg")),
+        stock: v.number(),
+        threshold: v.number(),
     },
     handler: async (ctx, args) => {
-        await ctx.db.patch(args.id, {
-            name: args.name,
-            category: args.category,
-            price: args.price,
-            serving: args.serving,
-            rating: args.rating,
-            image: args.image,
-            description: args.description,
-            nutrition: args.nutrition,
-            type: args.type,
+        const { id, ...rest } = args;
+
+        await ctx.db.patch(id, {
+            ...rest,
+
+            // ✅ Again availability ONLY depends on stock > 0
+            isAvailable: rest.stock > 0,
         });
     },
 });

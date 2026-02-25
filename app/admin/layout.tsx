@@ -4,16 +4,37 @@ import Link from "next/link";
 import { useUser } from "@stackframe/stack";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { LayoutDashboard, Utensils, ShoppingCart, Users } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import {
+    LayoutDashboard,
+    Utensils,
+    ShoppingCart,
+    Users,
+} from "lucide-react";
 
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const user = useUser();
+    const user: any = useUser();
     const router = useRouter();
     const pathname = usePathname();
+
+    // Extract email safely
+    const email =
+        user?.email ||
+        user?.primaryEmail ||
+        user?.primaryEmailAddress?.email ||
+        user?.emails?.[0]?.email ||
+        null;
+
+    // Fetch user from Convex
+    const convexUser = useQuery(
+        api.users.getUserByEmail,
+        email ? { email } : "skip"
+    );
 
     useEffect(() => {
         if (!user) {
@@ -21,12 +42,14 @@ export default function AdminLayout({
             return;
         }
 
-        if (user.primaryEmail !== "muruganpoorva@gmail.com") {
+        if (convexUser && convexUser.role !== "admin") {
             router.push("/");
         }
-    }, [user, router]);
+    }, [user, convexUser, router]);
 
-    if (!user) return null;
+    if (!user || !convexUser) return null;
+
+    if (convexUser.role !== "admin") return null;
 
     const navItems = [
         { name: "Dashboard", href: "/admin", icon: <LayoutDashboard size={18} /> },
@@ -52,7 +75,7 @@ export default function AdminLayout({
                                     key={item.name}
                                     href={item.href}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                                    ${isActive
+                  ${isActive
                                             ? "bg-violet-100 text-[#7C3AED] font-semibold shadow-sm"
                                             : "text-gray-600 hover:bg-violet-50 hover:text-[#7C3AED]"
                                         }`}
@@ -80,11 +103,11 @@ export default function AdminLayout({
 
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-600">
-                            {user.primaryEmail}
+                            {convexUser.name}
                         </span>
 
                         <div className="w-10 h-10 bg-[#7C3AED] text-white flex items-center justify-center rounded-full font-bold">
-                            A
+                            {convexUser.name.charAt(0).toUpperCase()}
                         </div>
                     </div>
                 </header>

@@ -11,12 +11,20 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingCart, Menu, X, Heart } from "lucide-react";
+import {
+    ShoppingCart,
+    Menu,
+    X,
+    Heart,
+    User,
+    UserCircle,
+} from "lucide-react";
 
 export function Navbar() {
-    const user = useUser();
+    const user: any = useUser();
     const stackApp = useStackApp();
     const { cart } = useCart();
     const { wishlist } = useWishlist();
@@ -28,9 +36,16 @@ export function Navbar() {
     );
     const wishlistCount = wishlist.length;
 
+    const email =
+        user?.email ||
+        user?.primaryEmail ||
+        user?.primaryEmailAddress?.email ||
+        user?.emails?.[0]?.email ||
+        "";
+
     const initials =
-        user?.displayName?.charAt(0).toUpperCase() ||
-        user?.primaryEmail?.charAt(0).toUpperCase() ||
+        user?.displayName?.charAt(0)?.toUpperCase() ||
+        email?.charAt(0)?.toUpperCase() ||
         "U";
 
     return (
@@ -52,9 +67,7 @@ export function Navbar() {
 
                 {/* DESKTOP NAV */}
                 <nav className="hidden md:flex items-center gap-12 absolute left-1/2 transform -translate-x-1/2">
-
                     <NavItem href="/" label="Home" />
-
                     <NavItem href="/menu" label="Menu" />
 
                     <NavItem
@@ -72,7 +85,6 @@ export function Navbar() {
                     />
 
                     <NavItem href="/orders" label="Orders" />
-
                 </nav>
 
                 {/* RIGHT SIDE */}
@@ -99,23 +111,41 @@ export function Navbar() {
                                 </button>
                             </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem disabled>
-                                    {user.primaryEmail}
+                            <DropdownMenuContent align="end" className="w-52">
+
+                                {/* USER NAME */}
+                                <DropdownMenuItem disabled className="flex items-center gap-2">
+                                    <User size={16} />
+                                    {user?.displayName || "User"}
                                 </DropdownMenuItem>
 
+                                <DropdownMenuSeparator />
+
+                                {/* YOUR INFORMATION */}
+                                <DropdownMenuItem asChild>
+                                    <Link
+                                        href="/profile"
+                                        className="flex items-center gap-2 cursor-pointer hover:text-purple-600 transition"
+                                    >
+                                        <UserCircle size={16} />
+                                        Your Information
+                                    </Link>
+                                </DropdownMenuItem>
+
+                                {/* LOGOUT */}
                                 <DropdownMenuItem
                                     onClick={() => stackApp.signOut()}
                                     className="text-red-500 cursor-pointer"
                                 >
                                     Logout
                                 </DropdownMenuItem>
+
                             </DropdownMenuContent>
                         </DropdownMenu>
                     ) : (
                         <Link
-                            href="/login"
-                            className="bg-purple-600 text-white px-5 py-2 rounded-xl font-semibold"
+                            href="/handler/sign-in"
+                            className="bg-purple-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-purple-700 transition"
                         >
                             Login
                         </Link>
@@ -128,25 +158,19 @@ export function Navbar() {
             {isOpen && (
                 <div className="md:hidden bg-white border-t shadow-sm">
                     <div className="flex flex-col items-center gap-6 py-6">
-
                         <NavItem href="/" label="Home" />
-
                         <NavItem href="/menu" label="Menu" />
-
                         <NavItem
                             href="/wishlist"
                             label="Wishlist"
                             badge={wishlistCount}
                         />
-
                         <NavItem
                             href="/cart"
                             label="Cart"
                             badge={cartCount}
                         />
-
                         <NavItem href="/orders" label="Orders" />
-
                     </div>
                 </div>
             )}
@@ -183,7 +207,6 @@ function NavItem({
                 )}
             </span>
 
-            {/* FULL WIDTH UNDERLINE */}
             <span className="absolute bottom-0 left-0 h-[3px] w-0 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
         </Link>
     );

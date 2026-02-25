@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { UploadCloud, Loader2 } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
@@ -14,6 +14,7 @@ interface Props {
 export default function AddDishForm({ editData, onClose }: Props) {
     const addDish = useMutation(api.dishes.addDish);
     const updateDish = useMutation(api.dishes.updateDish);
+    const categories = useQuery(api.categories.getCategories);
 
     const isEdit = !!editData;
 
@@ -23,7 +24,7 @@ export default function AddDishForm({ editData, onClose }: Props) {
 
     const [form, setForm] = useState({
         name: "",
-        category: "",
+        categoryId: "",
         price: "",
         serving: "",
         rating: "",
@@ -31,6 +32,8 @@ export default function AddDishForm({ editData, onClose }: Props) {
         protein: "",
         carbs: "",
         description: "",
+        stock: "",
+        threshold: "",
         type: "veg" as "veg" | "nonveg",
         image: "",
         imageFile: null as File | null,
@@ -38,16 +41,24 @@ export default function AddDishForm({ editData, onClose }: Props) {
 
     useEffect(() => {
         if (editData) {
+            const nutrition = editData.nutrition || "";
+
+            const caloriesMatch = nutrition.match(/Calories:\s*(\d+)/);
+            const proteinMatch = nutrition.match(/Protein:\s*(\d+)/);
+            const carbsMatch = nutrition.match(/Carbs:\s*(\d+)/);
+
             setForm({
                 name: editData.name,
-                category: editData.category,
+                categoryId: editData.categoryId,
                 price: String(editData.price),
                 serving: editData.serving,
                 rating: String(editData.rating),
-                calories: "",
-                protein: "",
-                carbs: "",
+                calories: caloriesMatch ? caloriesMatch[1] : "",
+                protein: proteinMatch ? proteinMatch[1] : "",
+                carbs: carbsMatch ? carbsMatch[1] : "",
                 description: editData.description,
+                stock: String(editData.stock ?? ""),
+                threshold: String(editData.threshold ?? ""),
                 type: editData.type,
                 image: editData.image,
                 imageFile: null,
@@ -56,17 +67,29 @@ export default function AddDishForm({ editData, onClose }: Props) {
     }, [editData]);
 
     const handleSubmit = async () => {
+        console.log("FORM DATA:", form);
+
+        const priceNumber = Number(form.price);
+        const ratingNumber = Number(form.rating);
+        const stockNumber = Number(form.stock);
+        const thresholdNumber = Number(form.threshold);
+
         if (
-            !form.name ||
-            !form.category ||
-            !form.price ||
-            !form.serving ||
-            !form.rating ||
-            !form.description ||
-            (imageType === "url" && !form.image) ||
+            form.name.trim() === "" ||
+            form.categoryId.trim() === "" ||
+            form.serving.trim() === "" ||
+            form.calories.trim() === "" ||
+            form.protein.trim() === "" ||
+            form.carbs.trim() === "" ||
+            form.description.trim() === "" ||
+            isNaN(priceNumber) ||
+            isNaN(ratingNumber) ||
+            isNaN(stockNumber) ||
+            isNaN(thresholdNumber) ||
+            (imageType === "url" && form.image.trim() === "") ||
             (imageType === "upload" && !form.imageFile)
         ) {
-            alert("Fill all required fields!");
+            alert("Fill all required fields correctly!");
             return;
         }
 
@@ -75,46 +98,40 @@ export default function AddDishForm({ editData, onClose }: Props) {
 
         let finalImage = form.image;
 
-        // ⚠️ Local preview only (works for now)
         if (imageType === "upload" && form.imageFile) {
             finalImage = URL.createObjectURL(form.imageFile);
         }
+
+        const dishPayload = {
+            name: form.name,
+            categoryId: form.categoryId as Id<"categories">,
+            price: priceNumber,
+            serving: form.serving,
+            rating: ratingNumber,
+            image: finalImage,
+            description: form.description,
+            nutrition: `Calories: ${form.calories} | Protein: ${form.protein}g | Carbs: ${form.carbs}g`,
+            type: form.type,
+            stock: stockNumber,
+            threshold: thresholdNumber,
+        };
 
         try {
             if (isEdit) {
                 await updateDish({
                     id: editData._id as Id<"dishes">,
-                    name: form.name,
-                    category: form.category,
-                    price: Number(form.price),
-                    serving: form.serving,
-                    rating: Number(form.rating),
-                    image: finalImage,
-                    description: form.description,
-                    nutrition: editData.nutrition,
-                    type: form.type,
+                    ...dishPayload,
                 });
             } else {
-                await addDish({
-                    name: form.name,
-                    category: form.category,
-                    price: Number(form.price),
-                    serving: form.serving,
-                    rating: Number(form.rating),
-                    image: finalImage,
-                    description: form.description,
-                    nutrition: `Calories: ${form.calories} | Protein: ${form.protein}g | Carbs: ${form.carbs}g`,
-                    type: form.type,
-                });
+                await addDish(dishPayload);
             }
 
             setSuccess(true);
 
-            // Auto clear form only when adding new dish
             if (!isEdit) {
                 setForm({
                     name: "",
-                    category: "",
+                    categoryId: "",
                     price: "",
                     serving: "",
                     rating: "",
@@ -122,90 +139,89 @@ export default function AddDishForm({ editData, onClose }: Props) {
                     protein: "",
                     carbs: "",
                     description: "",
+                    stock: "",
+                    threshold: "",
                     type: "veg",
                     image: "",
                     imageFile: null,
                 });
             }
+
+            onClose?.();
         } finally {
             setLoading(false);
         }
     };
 
+    if (!categories) return <p>Loading categories...</p>;
+
     return (
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl">
-
-            {/* HEADER WITH CLOSE BUTTON */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">
-                    {isEdit ? "Edit Dish" : "Add New Dish"}
-                </h2>
-
-                {onClose && (
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition"
-                    >
-                        Close ✕
-                    </button>
-                )}
-            </div>
+        <div className="bg-white rounded-2xl p-2">
+            <h2 className="text-2xl font-bold mb-6">
+                {isEdit ? "Edit Dish" : "Add New Dish"}
+            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                <Input
-                    label="Dish Name *"
-                    value={form.name}
-                    onChange={(v) => setForm({ ...form, name: v })}
-                />
+                <Input label="Dish Name *" value={form.name}
+                    onChange={(v) => setForm({ ...form, name: v })} />
 
                 <div>
                     <label className="block mb-2 font-medium">Category *</label>
                     <select
-                        value={form.category}
+                        value={form.categoryId}
                         onChange={(e) =>
-                            setForm({ ...form, category: e.target.value })
+                            setForm({ ...form, categoryId: e.target.value })
                         }
                         className="w-full border p-3 rounded-xl"
                     >
                         <option value="">Select Category</option>
-                        <option>Pizza</option>
-                        <option>Burger</option>
-                        <option>Pasta</option>
-                        <option>Dessert</option>
-                        <option>Drinks</option>
+                        {categories.map((cat) => (
+                            <option key={cat._id} value={cat._id}>
+                                {cat.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
-                <Input
-                    label="Price *"
-                    type="number"
+                <Input label="Price *" type="number"
                     value={form.price}
-                    onChange={(v) => setForm({ ...form, price: v })}
-                />
+                    onChange={(v) => setForm({ ...form, price: v })} />
 
-                <Input
-                    label="Serving *"
+                <Input label="Serving *"
                     value={form.serving}
-                    onChange={(v) => setForm({ ...form, serving: v })}
-                />
+                    onChange={(v) => setForm({ ...form, serving: v })} />
 
-                <Input
-                    label="Rating *"
-                    type="number"
+                <Input label="Calories *" type="number"
+                    value={form.calories}
+                    onChange={(v) => setForm({ ...form, calories: v })} />
+
+                <Input label="Protein (g) *" type="number"
+                    value={form.protein}
+                    onChange={(v) => setForm({ ...form, protein: v })} />
+
+                <Input label="Carbs (g) *" type="number"
+                    value={form.carbs}
+                    onChange={(v) => setForm({ ...form, carbs: v })} />
+
+                <Input label="Rating *" type="number"
                     value={form.rating}
-                    onChange={(v) => setForm({ ...form, rating: v })}
-                />
+                    onChange={(v) => setForm({ ...form, rating: v })} />
+
+                <Input label="Stock *" type="number"
+                    value={form.stock}
+                    onChange={(v) => setForm({ ...form, stock: v })} />
+
+                <Input label="Low Stock Threshold *" type="number"
+                    value={form.threshold}
+                    onChange={(v) => setForm({ ...form, threshold: v })} />
 
                 <div>
                     <label className="block mb-2 font-medium">Type *</label>
                     <select
                         value={form.type}
                         onChange={(e) =>
-                            setForm({
-                                ...form,
-                                type: e.target.value as "veg" | "nonveg",
-                            })
+                            setForm({ ...form, type: e.target.value as "veg" | "nonveg" })
                         }
                         className="w-full border p-3 rounded-xl"
                     >
@@ -214,35 +230,14 @@ export default function AddDishForm({ editData, onClose }: Props) {
                     </select>
                 </div>
 
-                {/* NUTRITION */}
-                <div className="md:col-span-2 grid grid-cols-3 gap-4">
-                    <Input
-                        label="Calories"
-                        value={form.calories}
-                        onChange={(v) => setForm({ ...form, calories: v })}
-                    />
-                    <Input
-                        label="Protein (g)"
-                        value={form.protein}
-                        onChange={(v) => setForm({ ...form, protein: v })}
-                    />
-                    <Input
-                        label="Carbs (g)"
-                        value={form.carbs}
-                        onChange={(v) => setForm({ ...form, carbs: v })}
-                    />
-                </div>
-
-                {/* IMAGE SECTION */}
                 <div className="md:col-span-2">
+                    <label className="block mb-2 font-medium">Dish Image *</label>
+
                     <div className="flex gap-4 mb-3">
                         <button
                             type="button"
                             onClick={() => setImageType("url")}
-                            className={`px-4 py-2 rounded-lg border transition ${imageType === "url"
-                                    ? "bg-purple-600 text-white"
-                                    : ""
-                                }`}
+                            className={`px-4 py-2 rounded-lg border ${imageType === "url" ? "bg-purple-600 text-white" : ""}`}
                         >
                             Image URL
                         </button>
@@ -250,25 +245,24 @@ export default function AddDishForm({ editData, onClose }: Props) {
                         <button
                             type="button"
                             onClick={() => setImageType("upload")}
-                            className={`px-4 py-2 rounded-lg border transition ${imageType === "upload"
-                                    ? "bg-purple-600 text-white"
-                                    : ""
-                                }`}
+                            className={`px-4 py-2 rounded-lg border ${imageType === "upload" ? "bg-purple-600 text-white" : ""}`}
                         >
                             Upload
                         </button>
                     </div>
 
                     {imageType === "url" ? (
-                        <Input
-                            label="Image URL *"
+                        <input
+                            type="text"
+                            placeholder="Enter image URL"
                             value={form.image}
-                            onChange={(v) =>
-                                setForm({ ...form, image: v })
+                            onChange={(e) =>
+                                setForm({ ...form, image: e.target.value })
                             }
+                            className="w-full border p-3 rounded-xl"
                         />
                     ) : (
-                        <div className="border-2 border-dashed rounded-xl p-6 text-center relative cursor-pointer hover:bg-gray-50 transition">
+                        <div className="border-2 border-dashed rounded-xl p-6 text-center relative cursor-pointer">
                             <input
                                 type="file"
                                 accept="image/*"
@@ -276,31 +270,23 @@ export default function AddDishForm({ editData, onClose }: Props) {
                                 onChange={(e) =>
                                     setForm({
                                         ...form,
-                                        imageFile:
-                                            e.target.files?.[0] || null,
+                                        imageFile: e.target.files?.[0] || null,
                                     })
                                 }
                             />
 
                             {!form.imageFile ? (
                                 <>
-                                    <UploadCloud
-                                        size={40}
-                                        className="mx-auto mb-2 text-gray-500"
-                                    />
-                                    <p className="text-gray-600">
-                                        Click to upload image
-                                    </p>
+                                    <UploadCloud className="mx-auto mb-2 text-gray-500" />
+                                    <p>Click to upload image</p>
                                 </>
                             ) : (
                                 <>
                                     <img
-                                        src={URL.createObjectURL(
-                                            form.imageFile
-                                        )}
+                                        src={URL.createObjectURL(form.imageFile)}
                                         className="h-48 mx-auto rounded-lg object-cover"
                                     />
-                                    <p className="text-green-600 mt-2 font-medium">
+                                    <p className="text-green-600 mt-2">
                                         Image uploaded successfully ✅
                                     </p>
                                 </>
@@ -310,17 +296,12 @@ export default function AddDishForm({ editData, onClose }: Props) {
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="block mb-2 font-medium">
-                        Description *
-                    </label>
+                    <label className="block mb-2 font-medium">Description *</label>
                     <textarea
                         rows={4}
                         value={form.description}
                         onChange={(e) =>
-                            setForm({
-                                ...form,
-                                description: e.target.value,
-                            })
+                            setForm({ ...form, description: e.target.value })
                         }
                         className="w-full border p-3 rounded-xl"
                     />
@@ -330,14 +311,14 @@ export default function AddDishForm({ editData, onClose }: Props) {
             <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="mt-8 w-full bg-purple-600 hover:bg-purple-700 transition text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                className="mt-8 w-full bg-purple-600 text-white py-3 rounded-xl flex justify-center items-center gap-2"
             >
                 {loading && <Loader2 className="animate-spin" size={18} />}
                 {isEdit ? "Save Changes" : "Add Dish"}
             </button>
 
             {success && (
-                <div className="mt-4 bg-green-100 text-green-700 p-3 rounded-lg text-center font-medium">
+                <div className="mt-4 bg-green-100 text-green-700 p-3 rounded-lg text-center">
                     Dish successfully {isEdit ? "updated" : "added"} 🎉
                 </div>
             )}

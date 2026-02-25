@@ -7,6 +7,9 @@ import { Plus, Minus, Star, Heart, Search, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useUser } from "@stackframe/stack";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Doc } from "@/convex/_generated/dataModel";
 import {
     Dialog,
     DialogContent,
@@ -14,23 +17,14 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
-interface Dish {
-    _id: string;
-    name: string;
-    category: string;
-    price: number;
-    serving: string;
-    rating: number;
-    image: string;
-    description: string;
-    nutrition: string;
-    type: "veg" | "nonveg";
-}
+type Dish = Doc<"dishes">;
 
 export default function MenuClient({ dishes }: { dishes: Dish[] }) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const user = useUser();
+
+    const categoriesData = useQuery(api.categories.getCategories);
 
     const { cart, addToCart, increaseQty, decreaseQty } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } =
@@ -44,18 +38,27 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
+    // 🔥 Removed duplicate "all"
     const [foodType, setFoodType] =
-        useState<"all" | "veg" | "nonveg">("all");
+        useState<"veg" | "nonveg" | null>(null);
 
     const [sort, setSort] =
         useState<"none" | "low" | "high">("none");
 
+    const [minRating, setMinRating] = useState<number>(0);
+    const [availableOnly, setAvailableOnly] = useState(false);
+
     const urlCategory = searchParams.get("category");
 
     useEffect(() => {
-        if (urlCategory) setActiveCategory(urlCategory);
-        else setActiveCategory(null);
-    }, [urlCategory]);
+        const categoryFromUrl = searchParams.get("category");
+
+        if (categoryFromUrl) {
+            setActiveCategory(categoryFromUrl);
+        } else {
+            setActiveCategory(null); // show all
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -64,17 +67,24 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
         return () => clearTimeout(timer);
     }, [search]);
 
-    // 🔎 Filtering Logic
+    const categoryMap = useMemo(() => {
+        if (!categoriesData) return {};
+        return Object.fromEntries(
+            categoriesData.map((c) => [c._id, c.name])
+        );
+    }, [categoriesData]);
+
     const filteredDishes = useMemo(() => {
         let result = [...dishes];
 
         if (activeCategory) {
             result = result.filter(
-                (dish) => dish.category === activeCategory
+                (dish) =>
+                    categoryMap[dish.categoryId] === activeCategory
             );
         }
 
-        if (debouncedSearch) {
+        if (debouncedSearch.trim() !== "") {
             result = result.filter((dish) =>
                 dish.name
                     .toLowerCase()
@@ -82,9 +92,22 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
             );
         }
 
-        if (foodType !== "all") {
+        // 🔥 Updated foodType filter
+        if (foodType) {
             result = result.filter(
                 (dish) => dish.type === foodType
+            );
+        }
+
+        if (minRating > 0) {
+            result = result.filter(
+                (dish) => dish.rating >= minRating
+            );
+        }
+
+        if (availableOnly) {
+            result = result.filter(
+                (dish) => dish.isAvailable === true
             );
         }
 
@@ -97,11 +120,24 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
         }
 
         return result;
-    }, [dishes, activeCategory, debouncedSearch, foodType, sort]);
+    }, [
+        dishes,
+        activeCategory,
+        debouncedSearch,
+        foodType,
+        sort,
+        minRating,
+        availableOnly,
+        categoryMap,
+    ]);
 
     const categories = [
         "all",
-        ...new Set(dishes.map((d) => d.category)),
+        ...new Set(
+            dishes
+                .map((d) => categoryMap[d.categoryId])
+                .filter(Boolean)
+        ),
     ];
 
     const requireAuth = (action: () => void) => {
@@ -119,10 +155,9 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                     Explore Our Menu
                 </h1>
 
-                {/* ================= FILTER SECTION ================= */}
+                {/* FILTER SECTION */}
                 <div className="space-y-6 max-w-5xl mx-auto">
 
-                    {/* Search */}
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
@@ -145,7 +180,7 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                                     )
                                 }
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-                                ${(activeCategory ?? "all") === cat
+                ${(activeCategory ?? "all") === cat
                                         ? "bg-purple-600 text-white scale-105 shadow-md"
                                         : "bg-white border border-purple-200 hover:bg-purple-50"
                                     }`}
@@ -155,33 +190,39 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                         ))}
                     </div>
 
-                    {/* Veg + Sort + Clear */}
+                    {/* Type + Sort + Rating */}
                     <div className="flex flex-wrap gap-4 justify-center">
 
-                        {["all", "veg", "nonveg"].map((type) => (
-                            <button
-                                key={type}
-                                onClick={() =>
-                                    setFoodType(type as any)
-                                }
-                                className={`px-4 py-2 rounded-xl text-sm transition
-                                ${foodType === type
-                                        ? "bg-purple-600 text-white"
-                                        : "bg-white border border-purple-200 hover:bg-purple-50"
-                                    }`}
-                            >
-                                {type === "all"
-                                    ? "All"
-                                    : type === "veg"
-                                        ? "Veg"
-                                        : "Non-Veg"}
-                            </button>
-                        ))}
+                        <button
+                            onClick={() =>
+                                setFoodType(foodType === "veg" ? null : "veg")
+                            }
+                            className={`px-4 py-2 rounded-xl text-sm transition
+                ${foodType === "veg"
+                                    ? "bg-purple-600 text-white"
+                                    : "bg-white border border-purple-200 hover:bg-purple-50"
+                                }`}
+                        >
+                            Veg
+                        </button>
+
+                        <button
+                            onClick={() =>
+                                setFoodType(foodType === "nonveg" ? null : "nonveg")
+                            }
+                            className={`px-4 py-2 rounded-xl text-sm transition
+                ${foodType === "nonveg"
+                                    ? "bg-purple-600 text-white"
+                                    : "bg-white border border-purple-200 hover:bg-purple-50"
+                                }`}
+                        >
+                            Non-Veg
+                        </button>
 
                         <button
                             onClick={() => setSort("low")}
                             className={`px-4 py-2 rounded-xl text-sm transition
-                            ${sort === "low"
+              ${sort === "low"
                                     ? "bg-purple-600 text-white"
                                     : "bg-white border border-purple-200"
                                 }`}
@@ -192,7 +233,7 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                         <button
                             onClick={() => setSort("high")}
                             className={`px-4 py-2 rounded-xl text-sm transition
-                            ${sort === "high"
+              ${sort === "high"
                                     ? "bg-purple-600 text-white"
                                     : "bg-white border border-purple-200"
                                 }`}
@@ -200,13 +241,39 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                             Price ↓
                         </button>
 
+                        <select
+                            value={minRating}
+                            onChange={(e) =>
+                                setMinRating(Number(e.target.value))
+                            }
+                            className="px-4 py-2 rounded-xl border border-purple-200"
+                        >
+                            <option value={0}>All Ratings</option>
+                            <option value={3}>3★ & above</option>
+                            <option value={4}>4★ & above</option>
+                            <option value={4.5}>4.5★ & above</option>
+                        </select>
+
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={availableOnly}
+                                onChange={() =>
+                                    setAvailableOnly(!availableOnly)
+                                }
+                            />
+                            Available Only
+                        </label>
+
                         <button
                             onClick={() => {
                                 setSearch("");
                                 setDebouncedSearch("");
                                 setActiveCategory(null);
-                                setFoodType("all");
+                                setFoodType(null);
                                 setSort("none");
+                                setMinRating(0);
+                                setAvailableOnly(false);
                             }}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition"
                         >
@@ -216,12 +283,16 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                     </div>
                 </div>
 
-                {/* ================= CATEGORY WISE DISPLAY ================= */}
-                {[
-                    ...new Set(filteredDishes.map((d) => d.category)),
-                ].map((category) => {
+                {/* Everything below remains EXACTLY SAME */}                {/* CATEGORY DISPLAY */}
+                {[...new Set(
+                    filteredDishes
+                        .map((d) => categoryMap[d.categoryId])
+                        .filter(Boolean)
+                )].map((category) => {
+
                     const categoryItems = filteredDishes.filter(
-                        (dish) => dish.category === category
+                        (dish) =>
+                            categoryMap[dish.categoryId] === category
                     );
 
                     if (categoryItems.length === 0) return null;
@@ -258,8 +329,8 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                                                 <div className="absolute top-4 left-4 flex gap-2">
                                                     <div
                                                         className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${dish.type === "veg"
-                                                                ? "bg-green-500"
-                                                                : "bg-red-500"
+                                                            ? "bg-green-500"
+                                                            : "bg-red-500"
                                                             }`}
                                                     >
                                                         {dish.type === "veg"
@@ -316,9 +387,7 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
 
                                                 <p
                                                     onClick={() =>
-                                                        setSelectedDish(
-                                                            dish
-                                                        )
+                                                        setSelectedDish(dish)
                                                     }
                                                     className="text-sm text-purple-600 underline cursor-pointer hover:text-purple-800"
                                                 >
@@ -328,14 +397,13 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                                                 {qty === 0 ? (
                                                     <button
                                                         onClick={() =>
-                                                            requireAuth(
-                                                                () =>
-                                                                    addToCart({
-                                                                        id: dish._id,
-                                                                        name: dish.name,
-                                                                        price: dish.price,
-                                                                        image: dish.image,
-                                                                    })
+                                                            requireAuth(() =>
+                                                                addToCart({
+                                                                    id: dish._id,
+                                                                    name: dish.name,
+                                                                    price: dish.price,
+                                                                    image: dish.image,
+                                                                })
                                                             )
                                                         }
                                                         className="w-full bg-purple-600 text-white py-2 rounded-xl font-medium hover:scale-105 transition"
@@ -344,23 +412,11 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                                                     </button>
                                                 ) : (
                                                     <div className="flex justify-between items-center bg-purple-600 text-white px-4 py-2 rounded-xl">
-                                                        <button
-                                                            onClick={() =>
-                                                                decreaseQty(
-                                                                    dish._id
-                                                                )
-                                                            }
-                                                        >
+                                                        <button onClick={() => decreaseQty(dish._id)}>
                                                             <Minus size={16} />
                                                         </button>
                                                         <span>{qty}</span>
-                                                        <button
-                                                            onClick={() =>
-                                                                increaseQty(
-                                                                    dish._id
-                                                                )
-                                                            }
-                                                        >
+                                                        <button onClick={() => increaseQty(dish._id)}>
                                                             <Plus size={16} />
                                                         </button>
                                                     </div>
@@ -375,7 +431,6 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                 })}
             </div>
 
-            {/* ================= DIALOG ================= */}
             <Dialog
                 open={!!selectedDish}
                 onOpenChange={() => setSelectedDish(null)}

@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as addresses from "../addresses.js";
 import type * as categories from "../categories.js";
+import type * as dashboard from "../dashboard.js";
 import type * as dishes from "../dishes.js";
 import type * as users from "../users.js";
 
@@ -19,7 +21,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  addresses: typeof addresses;
   categories: typeof categories;
+  dashboard: typeof dashboard;
   dishes: typeof dishes;
   users: typeof users;
 }>;

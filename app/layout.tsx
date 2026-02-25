@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import "./globals.css";
 
 import { ConvexClientProvider } from "@/lib/convex-provider";
+import { AuthSync } from "@/components/authsync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,12 +42,13 @@ export default function RootLayout({
         <StackProvider app={stackClientApp}>
           <StackTheme>
             <ConvexClientProvider>
-              <Suspense
-                fallback={
-                  <div className="min-h-screen bg-purple-50" />
-                }
-              >
+              <Suspense fallback={<div className="min-h-screen bg-purple-50" />}>
+
+                {/* ✅ MUST be inside Suspense */}
+                <AuthSync />
+
                 {children}
+
               </Suspense>
             </ConvexClientProvider>
           </StackTheme>
