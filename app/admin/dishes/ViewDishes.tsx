@@ -2,9 +2,16 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Id } from "@/convex/_generated/dataModel";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Eye, Trash, Pencil } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/admin/table/DataTable";
 
 export default function ViewDishes({
     onEdit,
@@ -15,30 +22,12 @@ export default function ViewDishes({
     const categories = useQuery(api.categories.getAllCategories);
 
     const deleteDish = useMutation(api.dishes.deleteDish);
-    const toggleAvailability = useMutation(api.dishes.toggleAvailability);
 
-    const [loadingId, setLoadingId] = useState<Id<"dishes"> | null>(null);
     const [viewDish, setViewDish] = useState<any>(null);
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [availabilityFilter, setAvailabilityFilter] = useState("all");
-
-    useEffect(() => {
-        const handleClickOutside = () => setOpenMenuId(null);
-        window.addEventListener("click", handleClickOutside);
-        return () => window.removeEventListener("click", handleClickOutside);
-    }, []);
-
-    const handleDelete = async (id: Id<"dishes">) => {
-        const confirmDelete = window.confirm(
-            "Are you sure you want to delete this dish?"
-        );
-        if (!confirmDelete) return;
-
-        await deleteDish({ id });
-    };
 
     const getCategoryName = (categoryId: Id<"categories">) => {
         if (!categories) return "Unknown";
@@ -70,34 +59,96 @@ export default function ViewDishes({
         return <p className="text-center mt-10">Loading dishes...</p>;
     }
 
-    return (
-        <div className="p-6 space-y-6">
+    type DishType = typeof filteredDishes[number];
 
-            {/* HEADER */}
-            <div>
-                <h1 className="text-2xl font-semibold">Dishes</h1>
-                <p className="text-sm text-purple-500">
-                    {dishes.length} dishes in {categories.length} categories
-                </p>
-            </div>
+    const columns = [
+        { header: "Item Name", accessor: "name" as keyof DishType },
+
+        {
+            header: "Category",
+            cell: (dish: DishType) =>
+                getCategoryName(dish.categoryId),
+        },
+
+        {
+            header: "Stock",
+            cell: (dish: DishType) =>
+                dish.stock === 0 ? (
+                    <span className="text-red-600 font-medium">
+                        Out of Stock
+                    </span>
+                ) : dish.stock <= dish.threshold ? (
+                    <span className="text-yellow-600 font-medium">
+                        Only {dish.stock} Left
+                    </span>
+                ) : (
+                    <span className="text-green-600 font-medium">
+                        In Stock
+                    </span>
+                ),
+        },
+
+        {
+            header: "Actions",
+            cell: (dish: DishType) => (
+                <DropdownMenu>
+                    <DropdownMenuTrigger>
+                        <MoreVertical className="cursor-pointer" />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            onClick={() => setViewDish(dish)}
+                            className="flex items-center gap-2"
+                        >
+                            <Eye size={16} /> View
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                            onClick={() => onEdit(dish)}
+                            className="flex items-center gap-2"
+                        >
+                            <Pencil size={16} /> Edit
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                const confirmDelete = window.confirm(
+                                    "Are you sure you want to delete this dish?"
+                                );
+                                if (!confirmDelete) return;
+                                await deleteDish({
+                                    id: dish._id as Id<"dishes">,
+                                });
+                            }}
+                            className="flex items-center gap-2 text-red-600"
+                        >
+                            <Trash size={16} /> Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ),
+        },
+    ];
+
+    return (
+        <div className="space-y-6">
 
             {/* SEARCH + FILTERS */}
-            <div className="bg-white p-4 rounded-2xl shadow flex flex-wrap gap-4 items-center justify-between">
-
+            <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex flex-wrap gap-4 items-center">
-
                     <input
                         type="text"
                         placeholder="Search dishes..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="border p-2 rounded-lg w-60"
+                        className="border border-gray-200 rounded-md px-4 py-2 w-60 text-sm"
                     />
 
                     <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="border p-2 rounded-lg"
+                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
                     >
                         <option value="all">All Categories</option>
                         {categories.map((cat) => (
@@ -113,9 +164,9 @@ export default function ViewDishes({
                         <button
                             key={status}
                             onClick={() => setAvailabilityFilter(status)}
-                            className={`px-3 py-1.5 rounded-lg text-sm ${availabilityFilter === status
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-100"
+                            className={`px-3 py-1.5 rounded-md text-sm ${availabilityFilter === status
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-gray-100"
                                 }`}
                         >
                             {status === "all"
@@ -128,106 +179,11 @@ export default function ViewDishes({
                 </div>
             </div>
 
-            {/* TABLE */}
-            <div className="bg-white rounded-2xl shadow-lg">
-                <table className="w-full text-sm">
-                    <thead className="bg-purple-50">
-                        <tr className="text-left">
-                            <th className="px-6 py-4 font-semibold">Item Name</th>
-                            <th className="px-6 py-4 font-semibold">Category</th>
-                            <th className="px-6 py-4 text-center font-semibold">Stock</th>
-                            <th className="px-6 py-4 text-center font-semibold">Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody className="divide-y">
-                        {filteredDishes.map((dish) => (
-                            <tr key={dish._id} className="hover:bg-gray-50 transition relative">
-                                <td className="px-6 py-4 font-medium">
-                                    {dish.name}
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    {getCategoryName(dish.categoryId)}
-                                </td>
-
-                                <td className="px-6 py-4 text-center">
-                                    {dish.stock === 0 ? (
-                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">
-                                            Out of Stock
-                                        </span>
-                                    ) : dish.stock <= dish.threshold ? (
-                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                                            Only {dish.stock} Left
-                                        </span>
-                                    ) : (
-                                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                            In Stock
-                                        </span>
-                                    )}
-                                </td>
-
-                                {/* ACTIONS COLUMN */}
-                                <td className="px-6 py-4 text-center relative">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setOpenMenuId(
-                                                openMenuId === dish._id
-                                                    ? null
-                                                    : dish._id
-                                            );
-                                        }}
-                                        className="p-2 rounded-lg hover:bg-gray-100 transition"
-                                    >
-                                        <MoreVertical size={18} />
-                                    </button>
-
-                                    {openMenuId === dish._id && (
-                                        <div className="absolute right-6 mt-2 w-32 bg-white border rounded-lg shadow-lg z-50">
-                                            <button
-                                                onClick={() => {
-                                                    setViewDish(dish);
-                                                    setOpenMenuId(null);
-                                                }}
-                                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                            >
-                                                View
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
-                                                    onEdit(dish);
-                                                    setOpenMenuId(null);
-                                                }}
-                                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                            >
-                                                Edit
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
-                                                    handleDelete(dish._id);
-                                                    setOpenMenuId(null);
-                                                }}
-                                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                {filteredDishes.length === 0 && (
-                    <p className="text-center py-6 text-gray-500">
-                        No matching dishes found.
-                    </p>
-                )}
-            </div>
+            <DataTable<DishType>
+                columns={columns}
+                data={filteredDishes}
+                loading={!dishes}
+            />
 
             {/* VIEW MODAL */}
             {viewDish && (
@@ -236,10 +192,10 @@ export default function ViewDishes({
                     onClick={() => setViewDish(null)}
                 >
                     <div
-                        className="bg-white p-8 rounded-2xl w-[600px] max-h-[90vh] overflow-y-auto"
+                        className="bg-white p-8 rounded-md w-[600px] max-h-[90vh] overflow-y-auto border border-gray-200"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="w-full h-64 mb-6 rounded-xl overflow-hidden">
+                        <div className="w-full h-64 mb-6 rounded-md overflow-hidden">
                             <img
                                 src={viewDish.image}
                                 alt={viewDish.name}

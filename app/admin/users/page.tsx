@@ -9,6 +9,7 @@ import {
     Trash,
     Ban,
     CheckCircle,
+    Power,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -17,9 +18,9 @@ import {
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useState, useMemo } from "react";
+import { DataTable } from "@/components/admin/table/DataTable";
 
 export default function AdminUsersPage() {
-
     const users = useQuery(api.users.getAllUsers);
     const updateUser = useMutation(api.users.updateUser);
     const toggleBlock = useMutation(api.users.toggleBlockUser);
@@ -30,7 +31,6 @@ export default function AdminUsersPage() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    // ✅ Always run hooks
     const filteredUsers = useMemo(() => {
         if (!users) return [];
 
@@ -49,13 +49,146 @@ export default function AdminUsersPage() {
         });
     }, [users, search, roleFilter, statusFilter]);
 
-    // ✅ AFTER hooks
     if (!users) return <div className="p-6">Loading...</div>;
 
-    return (
-        <div className="p-8 space-y-6">
+    type UserType = typeof filteredUsers[number];
 
-            {/* SEARCH + FILTERS */}
+    const columns = [
+        { header: "Name", accessor: "name" as keyof UserType },
+        { header: "Email", accessor: "email" as keyof UserType },
+
+        {
+            header: "Role",
+            cell: (user: UserType) => (
+                <select
+                    value={user.role}
+                    onChange={(e) =>
+                        updateUser({
+                            id: user._id as Id<"users">,
+                            name: user.name,
+                            role: e.target.value as any,
+                            status: user.status,
+                        })
+                    }
+                    className="border border-gray-200 rounded-md px-2 py-1 text-sm"
+                >
+                    <option value="customer">Customer</option>
+                    <option value="admin">Admin</option>
+                </select>
+            ),
+        },
+
+        // ✅ STATUS DISPLAY ONLY
+        {
+            header: "Status",
+            cell: (user: UserType) =>
+                user.status === "active" ? (
+                    <span className="text-green-600 font-medium">
+                        Active
+                    </span>
+                ) : (
+                    <span className="text-gray-500 font-medium">
+                        Inactive
+                    </span>
+                ),
+        },
+
+        {
+            header: "Blocked",
+            cell: (user: UserType) =>
+                user.isBlocked ? (
+                    <span className="text-red-500 font-medium">Yes</span>
+                ) : (
+                    <span className="text-green-600 font-medium">No</span>
+                ),
+        },
+
+        {
+            header: "Join Date",
+            cell: (user: UserType) =>
+                user.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString("en-GB")
+                    : "N/A",
+        },
+
+        // ✅ UPDATED ACTIONS DROPDOWN
+        {
+            header: "Actions",
+            cell: (user: UserType) => (
+                <DropdownMenu>
+                    <DropdownMenuTrigger>
+                        <MoreVertical className="cursor-pointer" />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            onClick={() => setViewUser(user)}
+                            className="flex items-center gap-2"
+                        >
+                            <Eye size={16} /> View
+                        </DropdownMenuItem>
+
+                        {/* 🔥 STATUS TOGGLE MOVED HERE */}
+                        <DropdownMenuItem
+                            onClick={() =>
+                                updateUser({
+                                    id: user._id as Id<"users">,
+                                    name: user.name,
+                                    role: user.role,
+                                    status:
+                                        user.status === "active"
+                                            ? "inactive"
+                                            : "active",
+                                })
+                            }
+                            className="flex items-center gap-2"
+                        >
+                            <Power size={16} />
+                            {user.status === "active"
+                                ? "Deactivate"
+                                : "Activate"}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                            onClick={() =>
+                                toggleBlock({
+                                    id: user._id as Id<"users">,
+                                    isBlocked: !user.isBlocked,
+                                })
+                            }
+                            className="flex items-center gap-2"
+                        >
+
+                            {user.isBlocked ? (
+                                <>
+                                    <CheckCircle size={16} /> Unblock
+                                </>
+                            ) : (
+                                <>
+                                    <Ban size={16} /> Block
+                                </>
+                            )}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                            onClick={() =>
+                                deleteUser({
+                                    id: user._id as Id<"users">,
+                                })
+                            }
+                            className="flex items-center gap-2 text-red-500"
+                        >
+                            <Trash size={16} /> Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ),
+        },
+    ];
+
+    return (
+        <div className="space-y-6">
+            {/* Filters */}
             <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex gap-4">
                     <input
@@ -63,13 +196,13 @@ export default function AdminUsersPage() {
                         placeholder="Search by name or email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="border rounded px-4 py-2 w-64"
+                        className="border border-gray-200 rounded-md px-4 py-2 w-64 text-sm"
                     />
 
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="border rounded px-3 py-2"
+                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
                     >
                         <option value="all">All Roles</option>
                         <option value="customer">Customer</option>
@@ -79,7 +212,7 @@ export default function AdminUsersPage() {
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="border rounded px-3 py-2"
+                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
                     >
                         <option value="all">All Status</option>
                         <option value="active">Active</option>
@@ -92,137 +225,11 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* TABLE */}
-            <div className="overflow-x-auto bg-white rounded-xl shadow">
-                <table className="min-w-full table-fixed border-collapse text-sm">
-                    <thead className="bg-violet-50">
-                        <tr>
-                            <th className="px-6 py-4 text-left font-semibold">Name</th>
-                            <th className="px-6 py-4 text-left font-semibold">Email</th>
-                            <th className="px-6 py-4 text-left font-semibold">Role</th>
-                            <th className="px-6 py-4 text-left font-semibold">Status</th>
-                            <th className="px-6 py-4 text-left font-semibold">Blocked</th>
-                            <th className="px-6 py-4 text-left font-semibold">Join Date</th>
-                            <th className="px-6 py-4 text-center font-semibold">Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {filteredUsers.map((user) => (
-                            <tr
-                                key={user._id}
-                                className="border-t hover:bg-violet-50 transition"
-                            >
-                                <td className="px-6 py-4 font-medium">
-                                    {user.name}
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    {user.email}
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    <select
-                                        value={user.role}
-                                        onChange={(e) =>
-                                            updateUser({
-                                                id: user._id as Id<"users">,
-                                                name: user.name,
-                                                role: e.target.value as any,
-                                                status: user.status,
-                                            })
-                                        }
-                                        className="border rounded px-3 py-1.5 text-sm w-full"
-                                    >
-                                        <option value="customer">Customer</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    <select
-                                        value={user.status}
-                                        onChange={(e) =>
-                                            updateUser({
-                                                id: user._id as Id<"users">,
-                                                name: user.name,
-                                                role: user.role,
-                                                status: e.target.value as any,
-                                            })
-                                        }
-                                        className="border rounded px-3 py-1.5 text-sm w-full"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    {user.isBlocked ? (
-                                        <span className="text-red-500 font-medium">Yes</span>
-                                    ) : (
-                                        <span className="text-green-600 font-medium">No</span>
-                                    )}
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    {user.createdAt
-                                        ? new Date(user.createdAt).toLocaleDateString("en-GB")
-                                        : "N/A"}
-                                </td>
-
-                                <td className="px-6 py-4 text-center">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger>
-                                            <MoreVertical className="cursor-pointer mx-auto" />
-                                        </DropdownMenuTrigger>
-
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                onClick={() => setViewUser(user)}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <Eye size={16} /> View
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    toggleBlock({
-                                                        id: user._id as Id<"users">,
-                                                        isBlocked: !user.isBlocked,
-                                                    })
-                                                }
-                                                className="flex items-center gap-2"
-                                            >
-                                                {user.isBlocked ? (
-                                                    <>
-                                                        <CheckCircle size={16} /> Unblock
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Ban size={16} /> Block
-                                                    </>
-                                                )}
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    deleteUser({
-                                                        id: user._id as Id<"users">,
-                                                    })
-                                                }
-                                                className="flex items-center gap-2 text-red-500"
-                                            >
-                                                <Trash size={16} /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <DataTable<UserType>
+                columns={columns}
+                data={filteredUsers}
+                loading={!users}
+            />
 
             {viewUser && (
                 <UserDetailsModal
@@ -234,11 +241,9 @@ export default function AdminUsersPage() {
     );
 }
 
-
 /* ========================= MODAL ========================= */
 
 function UserDetailsModal({ user, onClose }: any) {
-
     const addresses = useQuery(
         api.addresses.getUserAddresses,
         { userId: user._id }
@@ -246,7 +251,7 @@ function UserDetailsModal({ user, onClose }: any) {
 
     return (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-xl w-[500px] max-h-[80vh] overflow-y-auto shadow-xl">
+            <div className="bg-white p-6 rounded-md w-[500px] max-h-[80vh] overflow-y-auto border border-gray-200">
 
                 <h2 className="text-lg font-semibold mb-4">
                     User Details
@@ -279,7 +284,7 @@ function UserDetailsModal({ user, onClose }: any) {
                     {addresses && addresses.map((addr: any) => (
                         <div
                             key={addr._id}
-                            className="border p-3 rounded-lg mb-3"
+                            className="border border-gray-200 p-3 rounded-md mb-3"
                         >
                             <p className="font-medium">
                                 {addr.label}
@@ -303,7 +308,7 @@ function UserDetailsModal({ user, onClose }: any) {
                 <div className="flex justify-end mt-6">
                     <button
                         onClick={onClose}
-                        className="bg-purple-600 text-white px-4 py-2 rounded"
+                        className="border border-gray-300 px-4 py-2 rounded-md text-sm hover:bg-gray-100"
                     >
                         Close
                     </button>

@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
     title: string;
@@ -20,24 +21,28 @@ export default function AdminPageHeader({
 }: Props) {
     return (
         <div className="mb-6">
-
             {/* Top Row */}
             <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">{title}</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        {title}
+                    </h1>
                     {subtitle && (
-                        <p className="text-sm text-gray-500">{subtitle}</p>
+                        <p className="text-sm text-gray-500">
+                            {subtitle}
+                        </p>
                     )}
                 </div>
 
                 {buttonText && (
-                    <button
+                    <Button
                         onClick={onAddClick}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+                        size="sm"
+                        className="gap-2"
                     >
                         <Plus size={16} />
                         {buttonText}
-                    </button>
+                    </Button>
                 )}
             </div>
 

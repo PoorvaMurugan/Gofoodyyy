@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useUser } from "@stackframe/stack";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -15,6 +15,15 @@ import {
     ChevronDown,
 } from "lucide-react";
 
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
 export default function AdminLayout({
     children,
 }: {
@@ -23,8 +32,6 @@ export default function AdminLayout({
     const user: any = useUser();
     const router = useRouter();
     const pathname = usePathname();
-    const [open, setOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Extract email safely
     const email =
@@ -51,17 +58,6 @@ export default function AdminLayout({
         }
     }, [user, convexUser, router]);
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event: any) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     if (!user || !convexUser) return null;
     if (convexUser.role !== "admin") return null;
 
@@ -73,25 +69,25 @@ export default function AdminLayout({
     ];
 
     return (
-        <div className="flex h-screen bg-violet-50 overflow-hidden">
-            {/* Fixed Sidebar */}
-            <aside className="w-64 bg-white shadow-xl p-6 flex flex-col justify-between fixed h-screen">
+        <div className="flex h-screen bg-gray-50">
+            {/* Sidebar */}
+            <aside className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col justify-between fixed h-screen">
                 <div>
-                    <h2 className="text-2xl font-extrabold text-[#7C3AED] mb-10 tracking-wide">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-8">
                         GoFoody Admin
                     </h2>
 
-                    <nav className="space-y-3">
+                    <nav className="space-y-2">
                         {navItems.map((item) => {
                             const isActive = pathname === item.href;
                             return (
                                 <Link
                                     key={item.name}
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
                     ${isActive
-                                            ? "bg-violet-100 text-[#7C3AED] font-semibold shadow-sm"
-                                            : "text-gray-600 hover:bg-violet-50 hover:text-[#7C3AED]"
+                                            ? "bg-gray-100 text-gray-900 font-medium"
+                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                         }`}
                                 >
                                     {item.icon}
@@ -110,49 +106,52 @@ export default function AdminLayout({
             {/* Main Section */}
             <div className="flex-1 flex flex-col ml-64 h-screen">
                 {/* Header */}
-                <header className="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
-                    <h1 className="text-xl font-semibold text-gray-800">
+                <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                    <h1 className="text-lg font-semibold text-gray-900">
                         Admin Dashboard
                     </h1>
 
                     {/* Profile Dropdown */}
-                    <div className="relative" ref={dropdownRef}>
-                        <button
-                            onClick={() => setOpen(!open)}
-                            className="flex items-center gap-3 focus:outline-none"
-                        >
-                            <div className="w-10 h-10 bg-[#7C3AED] text-white flex items-center justify-center rounded-full font-bold">
-                                {convexUser.name.charAt(0).toUpperCase()}
-                            </div>
-                            <ChevronDown size={16} />
-                        </button>
-
-                        {open && (
-                            <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50">
-                                <div className="mb-3">
-                                    <p className="text-sm font-semibold text-gray-800">
-                                        {convexUser.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500">{email}</p>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-gray-900 text-white flex items-center justify-center rounded-full font-semibold text-sm">
+                                    {convexUser.name.charAt(0).toUpperCase()}
                                 </div>
+                                <ChevronDown size={16} className="text-gray-600" />
+                            </button>
+                        </DropdownMenuTrigger>
 
-                                <button
-                                    onClick={() => {
-                                        user?.signOut?.();
-                                        router.push("/login");
-                                    }}
-                                    className="w-full flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition"
-                                >
-                                    <LogOut size={16} />
-                                    Logout
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-900">
+                                        {convexUser.name}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        {email}
+                                    </span>
+                                </div>
+                            </DropdownMenuLabel>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem
+                                className="text-red-600 cursor-pointer"
+                                onClick={() => {
+                                    user?.signOut?.();
+                                    router.push("/login");
+                                }}
+                            >
+                                <LogOut size={16} className="mr-2" />
+                                Logout
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </header>
 
                 {/* Scrollable Content */}
-                <main className="flex-1 overflow-y-auto p-8">
+                <main className="flex-1 overflow-y-auto p-6">
                     {children}
                 </main>
             </div>
