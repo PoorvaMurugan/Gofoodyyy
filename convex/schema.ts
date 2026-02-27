@@ -11,11 +11,17 @@ export default defineSchema({
         categoryId: v.id("categories"),
         price: v.number(),
         serving: v.string(),
-        rating: v.number(),
+
+        // ✅ Rating is now optional
+        rating: v.optional(v.number()),
+
         image: v.string(),
         description: v.string(),
         nutrition: v.string(),
-        type: v.union(v.literal("veg"), v.literal("nonveg")),
+        type: v.union(
+            v.literal("veg"),
+            v.literal("nonveg")
+        ),
         isAvailable: v.boolean(),
         isDeleted: v.boolean(),
         stock: v.number(),
@@ -32,13 +38,12 @@ export default defineSchema({
     }),
 
     // =========================
-    // USERS TABLE (UPDATED)
+    // USERS TABLE
     // =========================
     users: defineTable({
         email: v.string(),
         name: v.string(),
 
-        // ✅ ADD THESE
         phone: v.optional(v.string()),
         gender: v.optional(v.string()),
         dob: v.optional(v.string()),
@@ -61,18 +66,15 @@ export default defineSchema({
     }).index("by_email", ["email"]),
 
     // =========================
-    // ADDRESSES TABLE (NEW)
+    // ADDRESSES TABLE
     // =========================
     addresses: defineTable({
         userId: v.id("users"),
-
-        label: v.string(), // Home, Work, Other
-
+        label: v.string(),
         street: v.string(),
         city: v.string(),
         state: v.string(),
         pincode: v.string(),
-
         isDefault: v.boolean(),
     }).index("by_user", ["userId"]),
 

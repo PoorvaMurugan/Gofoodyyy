@@ -5,13 +5,38 @@ import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Search, X, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
+
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { DataTable } from "@/components/admin/table/DataTable";
+import SideDrawer from "./SideDrawer";
 
 interface Props {
     onEdit: (category: any) => void;
@@ -24,15 +49,6 @@ export default function ViewCategories({ onEdit }: Props) {
     const [viewCategory, setViewCategory] = useState<any>(null);
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
-
-    const handleDelete = async (id: Id<"categories">) => {
-        const confirmDelete = window.confirm(
-            "Are you sure you want to delete this category?"
-        );
-        if (!confirmDelete) return;
-
-        await deleteCategory({ id });
-    };
 
     const filteredCategories = useMemo(() => {
         if (!categories) return [];
@@ -49,8 +65,15 @@ export default function ViewCategories({ onEdit }: Props) {
         });
     }, [categories, search, selectedCategory]);
 
+    // ✅ SKELETON LOADING
     if (!categories) {
-        return <p className="text-center mt-10">Loading categories...</p>;
+        return (
+            <div className="space-y-3 mt-6">
+                {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+            </div>
+        );
     }
 
     type CategoryType = typeof filteredCategories[number];
@@ -64,11 +87,14 @@ export default function ViewCategories({ onEdit }: Props) {
             header: "Actions",
             cell: (cat: CategoryType) => (
                 <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <MoreVertical className="cursor-pointer" />
+                    <DropdownMenuTrigger asChild>
+                        <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition">
+                            <MoreVertical size={18} />
+                        </button>
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="end">
+
                         <DropdownMenuItem
                             onClick={() => setViewCategory(cat)}
                             className="flex items-center gap-2"
@@ -76,7 +102,6 @@ export default function ViewCategories({ onEdit }: Props) {
                             <Eye size={14} /> View
                         </DropdownMenuItem>
 
-                        {/* 🔥 THIS NOW CALLS PAGE DRAWER */}
                         <DropdownMenuItem
                             onClick={() => onEdit(cat)}
                             className="flex items-center gap-2"
@@ -84,12 +109,49 @@ export default function ViewCategories({ onEdit }: Props) {
                             <Pencil size={14} /> Edit
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                            onClick={() => handleDelete(cat._id)}
-                            className="flex items-center gap-2 text-red-600"
-                        >
-                            <Trash2 size={14} /> Delete
-                        </DropdownMenuItem>
+                        {/* ✅ SHADCN ALERT DIALOG DELETE */}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="flex items-center gap-2 text-red-600"
+                                >
+                                    <Trash2 size={14} /> Delete
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete Category?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete{" "}
+                                        <span className="font-semibold">
+                                            {cat.name}
+                                        </span>.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Cancel
+                                    </AlertDialogCancel>
+
+                                    <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700"
+                                        onClick={async () => {
+                                            await deleteCategory({
+                                                id: cat._id as Id<"categories">,
+                                            });
+                                        }}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
                     </DropdownMenuContent>
                 </DropdownMenu>
             ),
@@ -124,18 +186,24 @@ export default function ViewCategories({ onEdit }: Props) {
                         )}
                     </div>
 
-                    <select
+                    <Select
                         value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="border border-gray-200 px-3 py-2 rounded-md text-sm"
+                        onValueChange={(value) => setSelectedCategory(value)}
                     >
-                        <option value="all">All Categories</option>
-                        {categories.map((cat) => (
-                            <option key={cat._id} value={cat._id}>
-                                {cat.name}
-                            </option>
-                        ))}
-                    </select>
+                        <SelectTrigger className="w-[180px] h-10 text-sm">
+                            <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+
+                            {categories.map((cat) => (
+                                <SelectItem key={cat._id} value={cat._id}>
+                                    {cat.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <p className="text-sm text-gray-500">
@@ -153,17 +221,16 @@ export default function ViewCategories({ onEdit }: Props) {
                 loading={!categories}
             />
 
-            {/* VIEW MODAL (KEEP THIS) */}
-            {viewCategory && (
-                <div
-                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-                    onClick={() => setViewCategory(null)}
-                >
-                    <div
-                        className="bg-white p-8 rounded-md w-[500px] border border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-full h-56 mb-6 rounded-md overflow-hidden">
+            {/* SIDE DRAWER */}
+            <SideDrawer
+                isOpen={!!viewCategory}
+                onClose={() => setViewCategory(null)}
+                title="Category Details"
+            >
+                {viewCategory && (
+                    <div className="space-y-6">
+
+                        <div className="w-full h-56 rounded-md overflow-hidden border">
                             <img
                                 src={viewCategory.image}
                                 alt={viewCategory.name}
@@ -171,12 +238,16 @@ export default function ViewCategories({ onEdit }: Props) {
                             />
                         </div>
 
-                        <h2 className="text-2xl font-semibold text-center">
-                            {viewCategory.name}
-                        </h2>
+                        <div className="text-center">
+                            <h2 className="text-2xl font-semibold">
+                                {viewCategory.name}
+                            </h2>
+                        </div>
+
                     </div>
-                </div>
-            )}
+                )}
+            </SideDrawer>
+
         </div>
     );
 }

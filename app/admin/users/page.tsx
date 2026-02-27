@@ -11,14 +11,39 @@ import {
     CheckCircle,
     Power,
 } from "lucide-react";
+
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { useState, useMemo } from "react";
 import { DataTable } from "@/components/admin/table/DataTable";
+import SideDrawer from "../dishes/SideDrawer";
 
 export default function AdminUsersPage() {
     const users = useQuery(api.users.getAllUsers);
@@ -49,7 +74,16 @@ export default function AdminUsersPage() {
         });
     }, [users, search, roleFilter, statusFilter]);
 
-    if (!users) return <div className="p-6">Loading...</div>;
+    // ✅ SKELETON LOADING
+    if (!users) {
+        return (
+            <div className="space-y-3 p-6">
+                {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+            </div>
+        );
+    }
 
     type UserType = typeof filteredUsers[number];
 
@@ -60,36 +94,35 @@ export default function AdminUsersPage() {
         {
             header: "Role",
             cell: (user: UserType) => (
-                <select
+                <Select
                     value={user.role}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                         updateUser({
                             id: user._id as Id<"users">,
                             name: user.name,
-                            role: e.target.value as any,
+                            role: value as any,
                             status: user.status,
                         })
                     }
-                    className="border border-gray-200 rounded-md px-2 py-1 text-sm"
                 >
-                    <option value="customer">Customer</option>
-                    <option value="admin">Admin</option>
-                </select>
+                    <SelectTrigger className="w-[140px] h-9 text-sm">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="customer">Customer</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                </Select>
             ),
         },
 
-        // ✅ STATUS DISPLAY ONLY
         {
             header: "Status",
             cell: (user: UserType) =>
                 user.status === "active" ? (
-                    <span className="text-green-600 font-medium">
-                        Active
-                    </span>
+                    <span className="text-green-600 font-medium">Active</span>
                 ) : (
-                    <span className="text-gray-500 font-medium">
-                        Inactive
-                    </span>
+                    <span className="text-gray-500 font-medium">Inactive</span>
                 ),
         },
 
@@ -111,16 +144,18 @@ export default function AdminUsersPage() {
                     : "N/A",
         },
 
-        // ✅ UPDATED ACTIONS DROPDOWN
         {
             header: "Actions",
             cell: (user: UserType) => (
                 <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <MoreVertical className="cursor-pointer" />
+                    <DropdownMenuTrigger asChild>
+                        <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition">
+                            <MoreVertical size={18} />
+                        </button>
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="end">
+
                         <DropdownMenuItem
                             onClick={() => setViewUser(user)}
                             className="flex items-center gap-2"
@@ -128,7 +163,6 @@ export default function AdminUsersPage() {
                             <Eye size={16} /> View
                         </DropdownMenuItem>
 
-                        {/* 🔥 STATUS TOGGLE MOVED HERE */}
                         <DropdownMenuItem
                             onClick={() =>
                                 updateUser({
@@ -158,7 +192,6 @@ export default function AdminUsersPage() {
                             }
                             className="flex items-center gap-2"
                         >
-
                             {user.isBlocked ? (
                                 <>
                                     <CheckCircle size={16} /> Unblock
@@ -170,16 +203,49 @@ export default function AdminUsersPage() {
                             )}
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                            onClick={() =>
-                                deleteUser({
-                                    id: user._id as Id<"users">,
-                                })
-                            }
-                            className="flex items-center gap-2 text-red-500"
-                        >
-                            <Trash size={16} /> Delete
-                        </DropdownMenuItem>
+                        {/* ✅ SHADCN ALERT DIALOG DELETE */}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="flex items-center gap-2 text-red-500"
+                                >
+                                    <Trash size={16} /> Delete
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete User?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete{" "}
+                                        <span className="font-semibold">
+                                            {user.name}
+                                        </span>.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Cancel
+                                    </AlertDialogCancel>
+
+                                    <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700"
+                                        onClick={async () => {
+                                            await deleteUser({
+                                                id: user._id as Id<"users">,
+                                            });
+                                        }}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
                     </DropdownMenuContent>
                 </DropdownMenu>
             ),
@@ -188,7 +254,8 @@ export default function AdminUsersPage() {
 
     return (
         <div className="space-y-6">
-            {/* Filters */}
+
+            {/* FILTERS */}
             <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex gap-4">
                     <input
@@ -199,25 +266,34 @@ export default function AdminUsersPage() {
                         className="border border-gray-200 rounded-md px-4 py-2 w-64 text-sm"
                     />
 
-                    <select
+                    <Select
                         value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
+                        onValueChange={(value) => setRoleFilter(value)}
                     >
-                        <option value="all">All Roles</option>
-                        <option value="customer">Customer</option>
-                        <option value="admin">Admin</option>
-                    </select>
+                        <SelectTrigger className="w-[160px]">
+                            <SelectValue placeholder="All Roles" />
+                        </SelectTrigger>
 
-                    <select
+                        <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="customer">Customer</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
+                        onValueChange={(value) => setStatusFilter(value)}
                     >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
+                        <SelectTrigger className="w-[160px] h-10 text-sm">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="text-sm text-gray-600">
@@ -231,90 +307,81 @@ export default function AdminUsersPage() {
                 loading={!users}
             />
 
-            {viewUser && (
-                <UserDetailsModal
-                    user={viewUser}
-                    onClose={() => setViewUser(null)}
-                />
-            )}
+            <SideDrawer
+                isOpen={!!viewUser}
+                onClose={() => setViewUser(null)}
+                title="User Details"
+            >
+                {viewUser && <UserDetailsDrawerContent user={viewUser} />}
+            </SideDrawer>
         </div>
     );
 }
 
-/* ========================= MODAL ========================= */
+/* ================= DRAWER CONTENT ================= */
 
-function UserDetailsModal({ user, onClose }: any) {
+function UserDetailsDrawerContent({ user }: any) {
     const addresses = useQuery(
         api.addresses.getUserAddresses,
         { userId: user._id }
     );
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-            <div className="bg-white p-6 rounded-md w-[500px] max-h-[80vh] overflow-y-auto border border-gray-200">
+        <div className="space-y-6">
 
-                <h2 className="text-lg font-semibold mb-4">
-                    User Details
-                </h2>
-
-                <div className="space-y-2 text-sm">
-                    <p><strong>Name:</strong> {user.name}</p>
-                    <p><strong>Email:</strong> {user.email}</p>
-                    <p><strong>Phone:</strong> {user.phone || "Not added"}</p>
-                    <p><strong>Gender:</strong> {user.gender || "Not added"}</p>
-                    <p><strong>DOB:</strong> {user.dob || "Not added"}</p>
-                    <p><strong>Bio:</strong> {user.bio || "Not added"}</p>
-                    <p><strong>Join Date:</strong> {user.createdAt ? new Date(user.createdAt).toLocaleString("en-GB") : "N/A"}</p>
-                    <p><strong>Role:</strong> {user.role}</p>
-                    <p><strong>Status:</strong> {user.status}</p>
-                    <p><strong>Blocked:</strong> {user.isBlocked ? "Yes" : "No"}</p>
-                </div>
-
-                <div className="mt-6">
-                    <h3 className="font-semibold mb-3">Addresses</h3>
-
-                    {!addresses && <p>Loading...</p>}
-
-                    {addresses && addresses.length === 0 && (
-                        <p className="text-gray-500 text-sm">
-                            No addresses added.
-                        </p>
-                    )}
-
-                    {addresses && addresses.map((addr: any) => (
-                        <div
-                            key={addr._id}
-                            className="border border-gray-200 p-3 rounded-md mb-3"
-                        >
-                            <p className="font-medium">
-                                {addr.label}
-                                {addr.isDefault && (
-                                    <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                        Default
-                                    </span>
-                                )}
-                            </p>
-
-                            <p className="text-sm text-gray-600">
-                                {addr.street}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                {addr.city}, {addr.state} - {addr.pincode}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex justify-end mt-6">
-                    <button
-                        onClick={onClose}
-                        className="border border-gray-300 px-4 py-2 rounded-md text-sm hover:bg-gray-100"
-                    >
-                        Close
-                    </button>
-                </div>
-
+            <div className="space-y-2 text-sm">
+                <p><strong>Name:</strong> {user.name}</p>
+                <p><strong>Email:</strong> {user.email}</p>
+                <p><strong>Phone:</strong> {user.phone || "Not added"}</p>
+                <p><strong>Gender:</strong> {user.gender || "Not added"}</p>
+                <p><strong>DOB:</strong> {user.dob || "Not added"}</p>
+                <p><strong>Bio:</strong> {user.bio || "Not added"}</p>
+                <p><strong>Join Date:</strong> {user.createdAt ? new Date(user.createdAt).toLocaleString("en-GB") : "N/A"}</p>
+                <p><strong>Role:</strong> {user.role}</p>
+                <p><strong>Status:</strong> {user.status}</p>
+                <p><strong>Blocked:</strong> {user.isBlocked ? "Yes" : "No"}</p>
             </div>
+
+            <div>
+                <h3 className="font-semibold mb-3">Addresses</h3>
+
+                {!addresses && (
+                    <div className="space-y-2">
+                        <Skeleton className="h-16 w-full rounded-md" />
+                        <Skeleton className="h-16 w-full rounded-md" />
+                    </div>
+                )}
+
+                {addresses && addresses.length === 0 && (
+                    <p className="text-gray-500 text-sm">
+                        No addresses added.
+                    </p>
+                )}
+
+                {addresses && addresses.map((addr: any) => (
+                    <div
+                        key={addr._id}
+                        className="border border-gray-200 p-3 rounded-md mb-3"
+                    >
+                        <p className="font-medium">
+                            {addr.label}
+                            {addr.isDefault && (
+                                <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                                    Default
+                                </span>
+                            )}
+                        </p>
+
+                        <p className="text-sm text-gray-600">
+                            {addr.street}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                            {addr.city}, {addr.state} - {addr.pincode}
+                        </p>
+                    </div>
+                ))}
+            </div>
+
         </div>
     );
 }

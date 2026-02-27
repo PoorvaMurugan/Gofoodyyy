@@ -7,10 +7,18 @@ import { X } from "lucide-react";
 interface Props {
     isOpen: boolean;
     onClose: () => void;
+    title?: string;
     children: ReactNode;
+    footer?: ReactNode; // optional future actions
 }
 
-export default function SideDrawer({ isOpen, onClose, children }: Props) {
+export default function SideDrawer({
+    isOpen,
+    onClose,
+    title = "Panel",
+    children,
+    footer,
+}: Props) {
     return (
         <AnimatePresence>
             {isOpen && (
@@ -42,7 +50,9 @@ export default function SideDrawer({ isOpen, onClose, children }: Props) {
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-                            <h2 className="text-lg font-semibold">Form Panel</h2>
+                            <h2 className="text-lg font-semibold">
+                                {title}
+                            </h2>
 
                             <button
                                 onClick={onClose}
@@ -56,6 +66,13 @@ export default function SideDrawer({ isOpen, onClose, children }: Props) {
                         <div className="flex-1 overflow-y-auto p-6">
                             {children}
                         </div>
+
+                        {/* Optional Footer */}
+                        {footer && (
+                            <div className="border-t px-6 py-4 bg-gray-50">
+                                {footer}
+                            </div>
+                        )}
                     </motion.div>
                 </>
             )}

@@ -31,63 +31,6 @@ export const getAllDishes = query({
 });
 
 /* ======================
-   GET ACTIVE DISHES
-   (Available Stock > 0)
-====================== */
-export const getActiveDishes = query({
-    handler: async (ctx) => {
-        return await ctx.db
-            .query("dishes")
-            .filter((q) =>
-                q.and(
-                    q.eq(q.field("isDeleted"), false),
-                    q.gt(q.field("stock"), 0)
-                )
-            )
-            .collect();
-    },
-});
-
-/* ======================
-   GET LOW STOCK DISHES
-   (Stock <= Threshold AND Stock > 0)
-====================== */
-export const getLowStockDishes = query({
-    handler: async (ctx) => {
-        return await ctx.db
-            .query("dishes")
-            .filter((q) =>
-                q.and(
-                    q.eq(q.field("isDeleted"), false),
-                    q.and(
-                        q.lte(q.field("stock"), q.field("threshold")),
-                        q.gt(q.field("stock"), 0)
-                    )
-                )
-            )
-            .collect();
-    },
-});
-
-/* ======================
-   GET OUT OF STOCK
-   (Stock === 0)
-====================== */
-export const getOutOfStockDishes = query({
-    handler: async (ctx) => {
-        return await ctx.db
-            .query("dishes")
-            .filter((q) =>
-                q.and(
-                    q.eq(q.field("isDeleted"), false),
-                    q.eq(q.field("stock"), 0)
-                )
-            )
-            .collect();
-    },
-});
-
-/* ======================
    ADD DISH
 ====================== */
 export const addDish = mutation({
@@ -96,7 +39,7 @@ export const addDish = mutation({
         categoryId: v.id("categories"),
         price: v.number(),
         serving: v.string(),
-        rating: v.number(),
+        rating: v.optional(v.number()),
         image: v.string(),
         description: v.string(),
         nutrition: v.string(),
@@ -107,17 +50,14 @@ export const addDish = mutation({
     handler: async (ctx, args) => {
         await ctx.db.insert("dishes", {
             ...args,
-
-            // ✅ Availability ONLY depends on stock > 0
             isAvailable: args.stock > 0,
-
             isDeleted: false,
         });
     },
 });
 
 /* ======================
-   DELETE (Soft Delete)
+   SOFT DELETE
 ====================== */
 export const deleteDish = mutation({
     args: { id: v.id("dishes") },
@@ -127,22 +67,7 @@ export const deleteDish = mutation({
 });
 
 /* ======================
-   TOGGLE AVAILABILITY (Manual override if needed)
-====================== */
-export const toggleAvailability = mutation({
-    args: { id: v.id("dishes") },
-    handler: async (ctx, args) => {
-        const dish = await ctx.db.get(args.id);
-        if (!dish) return;
-
-        await ctx.db.patch(args.id, {
-            isAvailable: !dish.isAvailable,
-        });
-    },
-});
-
-/* ======================
-   UPDATE DISH
+   UPDATE FULL DISH (Edit Form)
 ====================== */
 export const updateDish = mutation({
     args: {
@@ -151,7 +76,7 @@ export const updateDish = mutation({
         categoryId: v.id("categories"),
         price: v.number(),
         serving: v.string(),
-        rating: v.number(),
+        rating: v.optional(v.number()),
         image: v.string(),
         description: v.string(),
         nutrition: v.string(),
@@ -164,9 +89,23 @@ export const updateDish = mutation({
 
         await ctx.db.patch(id, {
             ...rest,
-
-            // ✅ Again availability ONLY depends on stock > 0
             isAvailable: rest.stock > 0,
+        });
+    },
+});
+
+/* ======================
+   UPDATE STOCK ONLY (Status Change)
+====================== */
+export const updateDishStock = mutation({
+    args: {
+        id: v.id("dishes"),
+        stock: v.number(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, {
+            stock: args.stock,
+            isAvailable: args.stock > 0,
         });
     },
 });

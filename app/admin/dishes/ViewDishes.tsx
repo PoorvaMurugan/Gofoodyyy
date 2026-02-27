@@ -4,14 +4,46 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useMemo } from "react";
 import { Id } from "@/convex/_generated/dataModel";
-import { MoreVertical, Eye, Trash, Pencil } from "lucide-react";
+import {
+    MoreVertical,
+    Eye,
+    Trash,
+    Pencil,
+    CheckCircle,
+    Ban,
+} from "lucide-react";
+
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { DataTable } from "@/components/admin/table/DataTable";
+import SideDrawer from "./SideDrawer";
 
 export default function ViewDishes({
     onEdit,
@@ -19,12 +51,12 @@ export default function ViewDishes({
     onEdit: (dish: any) => void;
 }) {
     const dishes = useQuery(api.dishes.getAllDishes);
-    const categories = useQuery(api.categories.getAllCategories);
+    const categories = useQuery(api.categories.getCategories);
 
     const deleteDish = useMutation(api.dishes.deleteDish);
+    const updateDishStock = useMutation(api.dishes.updateDishStock);
 
     const [viewDish, setViewDish] = useState<any>(null);
-
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -39,8 +71,9 @@ export default function ViewDishes({
         if (!dishes) return [];
 
         return dishes.filter((dish) => {
-            const matchesSearch =
-                dish.name.toLowerCase().includes(search.toLowerCase());
+            const matchesSearch = dish.name
+                .toLowerCase()
+                .includes(search.toLowerCase());
 
             const matchesCategory =
                 selectedCategory === "all" ||
@@ -55,8 +88,15 @@ export default function ViewDishes({
         });
     }, [dishes, search, selectedCategory, availabilityFilter]);
 
+    // ✅ SKELETON LOADING INSTEAD OF TEXT
     if (!dishes || !categories) {
-        return <p className="text-center mt-10">Loading dishes...</p>;
+        return (
+            <div className="space-y-3 mt-6">
+                {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+            </div>
+        );
     }
 
     type DishType = typeof filteredDishes[number];
@@ -66,8 +106,7 @@ export default function ViewDishes({
 
         {
             header: "Category",
-            cell: (dish: DishType) =>
-                getCategoryName(dish.categoryId),
+            cell: (dish: DishType) => getCategoryName(dish.categoryId),
         },
 
         {
@@ -92,11 +131,14 @@ export default function ViewDishes({
             header: "Actions",
             cell: (dish: DishType) => (
                 <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <MoreVertical className="cursor-pointer" />
+                    <DropdownMenuTrigger asChild>
+                        <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition">
+                            <MoreVertical size={18} />
+                        </button>
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="end">
+
                         <DropdownMenuItem
                             onClick={() => setViewDish(dish)}
                             className="flex items-center gap-2"
@@ -113,18 +155,75 @@ export default function ViewDishes({
 
                         <DropdownMenuItem
                             onClick={async () => {
-                                const confirmDelete = window.confirm(
-                                    "Are you sure you want to delete this dish?"
-                                );
-                                if (!confirmDelete) return;
-                                await deleteDish({
+                                await updateDishStock({
                                     id: dish._id as Id<"dishes">,
+                                    stock: dish.stock === 0 ? 10 : 0,
                                 });
                             }}
-                            className="flex items-center gap-2 text-red-600"
+                            className="flex items-center gap-2"
                         >
-                            <Trash size={16} /> Delete
+                            {dish.stock === 0 ? (
+                                <>
+                                    <CheckCircle
+                                        size={16}
+                                        className="text-green-600"
+                                    />
+                                    Mark as In Stock
+                                </>
+                            ) : (
+                                <>
+                                    <Ban
+                                        size={16}
+                                        className="text-red-600"
+                                    />
+                                    Mark as Out of Stock
+                                </>
+                            )}
                         </DropdownMenuItem>
+
+                        {/* ✅ SHADCN ALERT DIALOG DELETE */}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="flex items-center gap-2 text-red-600"
+                                >
+                                    <Trash size={16} /> Delete
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete Dish?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete{" "}
+                                        <span className="font-semibold">
+                                            {dish.name}
+                                        </span>.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Cancel
+                                    </AlertDialogCancel>
+
+                                    <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700"
+                                        onClick={async () => {
+                                            await deleteDish({
+                                                id: dish._id as Id<"dishes">,
+                                            });
+                                        }}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
                     </DropdownMenuContent>
                 </DropdownMenu>
             ),
@@ -145,18 +244,24 @@ export default function ViewDishes({
                         className="border border-gray-200 rounded-md px-4 py-2 w-60 text-sm"
                     />
 
-                    <select
+                    <Select
                         value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="border border-gray-200 rounded-md px-3 py-2 text-sm"
+                        onValueChange={(value) => setSelectedCategory(value)}
                     >
-                        <option value="all">All Categories</option>
-                        {categories.map((cat) => (
-                            <option key={cat._id} value={cat._id}>
-                                {cat.name}
-                            </option>
-                        ))}
-                    </select>
+                        <SelectTrigger className="w-[180px] h-10 text-sm">
+                            <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+
+                            {categories.map((cat) => (
+                                <SelectItem key={cat._id} value={cat._id}>
+                                    {cat.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="flex gap-2">
@@ -165,8 +270,8 @@ export default function ViewDishes({
                             key={status}
                             onClick={() => setAvailabilityFilter(status)}
                             className={`px-3 py-1.5 rounded-md text-sm ${availabilityFilter === status
-                                    ? "bg-gray-900 text-white"
-                                    : "bg-gray-100"
+                                ? "bg-gray-900 text-white"
+                                : "bg-gray-100"
                                 }`}
                         >
                             {status === "all"
@@ -185,17 +290,16 @@ export default function ViewDishes({
                 loading={!dishes}
             />
 
-            {/* VIEW MODAL */}
-            {viewDish && (
-                <div
-                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-                    onClick={() => setViewDish(null)}
-                >
-                    <div
-                        className="bg-white p-8 rounded-md w-[600px] max-h-[90vh] overflow-y-auto border border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-full h-64 mb-6 rounded-md overflow-hidden">
+            {/* SIDE DRAWER */}
+            <SideDrawer
+                isOpen={!!viewDish}
+                onClose={() => setViewDish(null)}
+                title="Dish Details"
+            >
+                {viewDish && (
+                    <div className="space-y-6">
+
+                        <div className="w-full h-64 rounded-md overflow-hidden border">
                             <img
                                 src={viewDish.image}
                                 alt={viewDish.name}
@@ -203,21 +307,41 @@ export default function ViewDishes({
                             />
                         </div>
 
-                        <h2 className="text-2xl font-bold mb-4">
-                            {viewDish.name}
-                        </h2>
+                        <div>
+                            <h2 className="text-2xl font-bold">
+                                {viewDish.name}
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {getCategoryName(viewDish.categoryId)}
+                            </p>
+                        </div>
 
-                        <p>Category: {getCategoryName(viewDish.categoryId)}</p>
-                        <p>Price: ₹{viewDish.price}</p>
-                        <p>Rating: {viewDish.rating}</p>
-                        <p>Type: {viewDish.type}</p>
+                        <div className="space-y-2 text-sm">
+                            <p><strong>Price:</strong> ₹{viewDish.price}</p>
+                            <p><strong>Serving:</strong> {viewDish.serving}</p>
+                            <p><strong>Type:</strong> {viewDish.type}</p>
+                            <p><strong>Threshold:</strong> {viewDish.threshold}</p>
+                            <p><strong>Stock:</strong> {viewDish.stock}</p>
+                        </div>
 
-                        <p className="mt-4 text-gray-600">
-                            {viewDish.description}
-                        </p>
+                        <div>
+                            <h3 className="font-semibold mb-2">Nutrition</h3>
+                            <p className="text-sm text-gray-600">
+                                {viewDish.nutrition}
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 className="font-semibold mb-2">Description</h3>
+                            <p className="text-sm text-gray-600">
+                                {viewDish.description}
+                            </p>
+                        </div>
+
                     </div>
-                </div>
-            )}
+                )}
+            </SideDrawer>
+
         </div>
     );
 }

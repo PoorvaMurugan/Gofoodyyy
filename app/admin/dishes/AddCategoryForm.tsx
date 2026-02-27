@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader2, UploadCloud } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
@@ -9,11 +9,12 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Tabs,
-    TabsList,
-    TabsTrigger,
-    TabsContent,
-} from "@/components/ui/tabs";
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 import { AdminFormLayout } from "@/components/admin/form/AdminFormLayout";
 import { AdminFormField } from "@/components/admin/form/AdminFormField";
@@ -29,6 +30,7 @@ export default function AddCategoryForm({
 }: Props) {
     const addCategory = useMutation(api.categories.addCategory);
     const updateCategory = useMutation(api.categories.updateCategory);
+    const categories = useQuery(api.categories.getCategories);
 
     const isEdit = !!editData;
 
@@ -37,6 +39,12 @@ export default function AddCategoryForm({
     const [imageUrl, setImageUrl] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    const [errors, setErrors] = useState<{
+        name?: string;
+        image?: string;
+    }>({});
 
     useEffect(() => {
         if (editData) {
@@ -46,27 +54,69 @@ export default function AddCategoryForm({
         }
     }, [editData]);
 
-    const handleSubmit = async (
-        e: React.FormEvent<HTMLFormElement>
-    ) => {
-        e.preventDefault();
+    /* ---------------- NORMALIZE FUNCTION ---------------- */
 
-        let finalImage = imageUrl;
+    const normalize = (str: string) =>
+        str
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, ""); // removes ALL spaces
 
-        if (!name) {
-            alert("Category name is required");
-            return;
+    /* ---------------- VALIDATION ---------------- */
+
+    const validate = () => {
+        const newErrors: typeof errors = {};
+
+        if (!name.trim()) {
+            newErrors.name = "Category name is required";
         }
 
-        if (imageType === "url" && !imageUrl) {
-            alert("Please enter image URL");
-            return;
+        // 🔥 STRICT DUPLICATE CHECK
+        if (categories && name.trim()) {
+            const newName = normalize(name);
+
+            const alreadyExists = categories.some((cat) => {
+                const existingName = normalize(cat.name);
+
+                return (
+                    existingName === newName &&
+                    (!isEdit || cat._id !== editData?._id)
+                );
+            });
+
+            if (alreadyExists) {
+                newErrors.name = "Category already exists";
+            }
+        }
+
+        if (imageType === "url") {
+            if (!imageUrl.trim()) {
+                newErrors.image = "Image URL is required";
+            } else {
+                try {
+                    new URL(imageUrl);
+                } catch {
+                    newErrors.image = "Enter a valid image link";
+                }
+            }
         }
 
         if (imageType === "upload" && !imageFile) {
-            alert("Please upload an image");
-            return;
+            newErrors.image = "Please upload an image";
         }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    /* ---------------- SUBMIT ---------------- */
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        if (!validate()) return;
+
+        let finalImage = imageUrl;
 
         if (imageType === "upload" && imageFile) {
             finalImage = URL.createObjectURL(imageFile);
@@ -78,12 +128,12 @@ export default function AddCategoryForm({
             if (isEdit) {
                 await updateCategory({
                     id: editData._id as Id<"categories">,
-                    name,
+                    name: name.trim(),
                     image: finalImage,
                 });
             } else {
                 await addCategory({
-                    name,
+                    name: name.trim(),
                     image: finalImage,
                 });
             }
@@ -111,73 +161,120 @@ export default function AddCategoryForm({
                     <Input
                         placeholder="Pizza, Burger..."
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => {
+                            setName(e.target.value);
+                            setErrors({ ...errors, name: undefined });
+                        }}
+                        className={errors.name ? "border-red-500" : ""}
                     />
+                    {errors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                            {errors.name}
+                        </p>
+                    )}
                 </AdminFormField>
 
-                {/* IMAGE SECTION */}
-                <AdminFormField label="Category Image">
-                    <Tabs
+                {/* IMAGE SOURCE */}
+                <AdminFormField label="Image Source">
+                    <Select
                         value={imageType}
-                        onValueChange={(val: string) =>
+                        onValueChange={(val) =>
                             setImageType(val as "url" | "upload")
                         }
                     >
-                        <TabsList className="grid grid-cols-2">
-                            <TabsTrigger value="url">
-                                Image URL
-                            </TabsTrigger>
-                            <TabsTrigger value="upload">
-                                Upload
-                            </TabsTrigger>
-                        </TabsList>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select image source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="url">Image URL</SelectItem>
+                            <SelectItem value="upload">Upload Image</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </AdminFormField>
 
-                        <TabsContent value="url" className="mt-4">
-                            <Input
-                                placeholder="https://example.com/image.jpg"
-                                value={imageUrl}
-                                onChange={(e) => setImageUrl(e.target.value)}
-                            />
-                        </TabsContent>
+                {/* IMAGE URL */}
+                {imageType === "url" && (
+                    <AdminFormField label="Image URL">
+                        <Input
+                            placeholder="Paste valid image link"
+                            value={imageUrl}
+                            onChange={(e) => {
+                                setImageUrl(e.target.value);
+                                setImageError(false);
+                                setErrors({ ...errors, image: undefined });
+                            }}
+                            className={errors.image ? "border-red-500" : ""}
+                        />
 
-                        <TabsContent value="upload" className="mt-4">
-                            <div className="border border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:bg-gray-50 transition relative">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    onChange={(e) =>
-                                        setImageFile(
-                                            e.target.files?.[0] || null
-                                        )
-                                    }
-                                />
+                        {errors.image && (
+                            <p className="text-sm text-red-500 mt-1">
+                                {errors.image}
+                            </p>
+                        )}
 
-                                {!imageFile ? (
-                                    <>
-                                        <UploadCloud
-                                            size={36}
-                                            className="mx-auto mb-2 text-gray-500"
-                                        />
-                                        <p className="text-sm text-gray-600">
-                                            Click to upload image
-                                        </p>
-                                    </>
+                        {imageUrl && !errors.image && (
+                            <div className="mt-4">
+                                {!imageError ? (
+                                    <img
+                                        src={imageUrl}
+                                        alt="Preview"
+                                        onError={() => setImageError(true)}
+                                        className="h-32 rounded-md object-cover border"
+                                    />
                                 ) : (
-                                    <>
-                                        <img
-                                            src={URL.createObjectURL(imageFile)}
-                                            className="h-32 mx-auto rounded-md object-cover"
-                                        />
-                                        <p className="text-sm text-green-600 mt-2">
-                                            Image uploaded
-                                        </p>
-                                    </>
+                                    <p className="text-sm text-red-500">
+                                        Image not reachable or invalid source
+                                    </p>
                                 )}
                             </div>
-                        </TabsContent>
-                    </Tabs>
-                </AdminFormField>
+                        )}
+                    </AdminFormField>
+                )}
+
+                {/* IMAGE UPLOAD */}
+                {imageType === "upload" && (
+                    <AdminFormField label="Upload Image">
+                        <div className="border border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:bg-gray-50 transition relative">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                onChange={(e) => {
+                                    setImageFile(e.target.files?.[0] || null);
+                                    setErrors({ ...errors, image: undefined });
+                                }}
+                            />
+
+                            {!imageFile ? (
+                                <>
+                                    <UploadCloud
+                                        size={36}
+                                        className="mx-auto mb-2 text-gray-500"
+                                    />
+                                    <p className="text-sm text-gray-600">
+                                        Click to upload image
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <img
+                                        src={URL.createObjectURL(imageFile)}
+                                        className="h-32 mx-auto rounded-md object-cover"
+                                    />
+                                    <p className="text-sm text-green-600 mt-2">
+                                        Image uploaded successfully
+                                    </p>
+                                </>
+                            )}
+                        </div>
+
+                        {errors.image && (
+                            <p className="text-sm text-red-500 mt-1">
+                                {errors.image}
+                            </p>
+                        )}
+                    </AdminFormField>
+                )}
 
                 {/* BUTTONS */}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">

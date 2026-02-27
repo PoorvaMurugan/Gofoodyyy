@@ -98,13 +98,11 @@ export default function MenuClient({ dishes }: { dishes: Dish[] }) {
                 (dish) => dish.type === foodType
             );
         }
-
         if (minRating > 0) {
             result = result.filter(
-                (dish) => dish.rating >= minRating
+                (dish) => (dish.rating ?? 0) >= minRating
             );
         }
-
         if (availableOnly) {
             result = result.filter(
                 (dish) => dish.isAvailable === true
