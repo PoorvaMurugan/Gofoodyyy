@@ -46,21 +46,31 @@ export default function AddCategoryForm({
         image?: string;
     }>({});
 
+    /* ---------------- RESET + PREFILL ---------------- */
+
     useEffect(() => {
         if (editData) {
-            setName(editData.name);
-            setImageUrl(editData.image);
+            // Prefill for edit
+            setName(editData.name || "");
+            setImageUrl(editData.image || "");
+            setImageType("url"); // Existing image always treated as URL
+            setImageFile(null);
+        } else {
+            // Reset for add mode
+            setName("");
+            setImageUrl("");
+            setImageFile(null);
             setImageType("url");
         }
+
+        setErrors({});
+        setImageError(false);
     }, [editData]);
 
-    /* ---------------- NORMALIZE FUNCTION ---------------- */
+    /* ---------------- NORMALIZE ---------------- */
 
     const normalize = (str: string) =>
-        str
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, ""); // removes ALL spaces
+        str.toLowerCase().trim().replace(/\s+/g, "");
 
     /* ---------------- VALIDATION ---------------- */
 
@@ -71,7 +81,6 @@ export default function AddCategoryForm({
             newErrors.name = "Category name is required";
         }
 
-        // 🔥 STRICT DUPLICATE CHECK
         if (categories && name.trim()) {
             const newName = normalize(name);
 
@@ -113,7 +122,6 @@ export default function AddCategoryForm({
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
         if (!validate()) return;
 
         let finalImage = imageUrl;
@@ -139,12 +147,6 @@ export default function AddCategoryForm({
             }
 
             if (onClose) onClose();
-
-            if (!isEdit) {
-                setName("");
-                setImageUrl("");
-                setImageFile(null);
-            }
         } finally {
             setLoading(false);
         }
@@ -163,7 +165,7 @@ export default function AddCategoryForm({
                         value={name}
                         onChange={(e) => {
                             setName(e.target.value);
-                            setErrors({ ...errors, name: undefined });
+                            setErrors((prev) => ({ ...prev, name: undefined }));
                         }}
                         className={errors.name ? "border-red-500" : ""}
                     />
@@ -183,7 +185,7 @@ export default function AddCategoryForm({
                         }
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Select image source" />
+                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="url">Image URL</SelectItem>
@@ -201,7 +203,7 @@ export default function AddCategoryForm({
                             onChange={(e) => {
                                 setImageUrl(e.target.value);
                                 setImageError(false);
-                                setErrors({ ...errors, image: undefined });
+                                setErrors((prev) => ({ ...prev, image: undefined }));
                             }}
                             className={errors.image ? "border-red-500" : ""}
                         />
@@ -241,7 +243,7 @@ export default function AddCategoryForm({
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 onChange={(e) => {
                                     setImageFile(e.target.files?.[0] || null);
-                                    setErrors({ ...errors, image: undefined });
+                                    setErrors((prev) => ({ ...prev, image: undefined }));
                                 }}
                             />
 

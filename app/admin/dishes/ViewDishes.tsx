@@ -9,8 +9,6 @@ import {
     Eye,
     Trash,
     Pencil,
-    CheckCircle,
-    Ban,
 } from "lucide-react";
 
 import {
@@ -41,7 +39,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { Skeleton } from "@/components/ui/skeleton";
-
 import { DataTable } from "@/components/admin/table/DataTable";
 import SideDrawer from "./SideDrawer";
 
@@ -52,9 +49,7 @@ export default function ViewDishes({
 }) {
     const dishes = useQuery(api.dishes.getAllDishes);
     const categories = useQuery(api.categories.getCategories);
-
     const deleteDish = useMutation(api.dishes.deleteDish);
-    const updateDishStock = useMutation(api.dishes.updateDishStock);
 
     const [viewDish, setViewDish] = useState<any>(null);
     const [search, setSearch] = useState("");
@@ -65,6 +60,20 @@ export default function ViewDishes({
         if (!categories) return "Unknown";
         const category = categories.find((c) => c._id === categoryId);
         return category ? category.name : "Unknown";
+    };
+
+    const getStockStatus = (stock: number, threshold: number) => {
+        if (stock === 0)
+            return <span className="text-red-600 font-medium">Out of Stock</span>;
+
+        if (stock <= threshold)
+            return (
+                <span className="text-yellow-600 font-medium">
+                    Only {stock} Left
+                </span>
+            );
+
+        return <span className="text-green-600 font-medium">In Stock</span>;
     };
 
     const filteredDishes = useMemo(() => {
@@ -88,7 +97,6 @@ export default function ViewDishes({
         });
     }, [dishes, search, selectedCategory, availabilityFilter]);
 
-    // ✅ SKELETON LOADING INSTEAD OF TEXT
     if (!dishes || !categories) {
         return (
             <div className="space-y-3 mt-6">
@@ -106,25 +114,14 @@ export default function ViewDishes({
 
         {
             header: "Category",
-            cell: (dish: DishType) => getCategoryName(dish.categoryId),
+            cell: (dish: DishType) =>
+                getCategoryName(dish.categoryId),
         },
 
         {
             header: "Stock",
             cell: (dish: DishType) =>
-                dish.stock === 0 ? (
-                    <span className="text-red-600 font-medium">
-                        Out of Stock
-                    </span>
-                ) : dish.stock <= dish.threshold ? (
-                    <span className="text-yellow-600 font-medium">
-                        Only {dish.stock} Left
-                    </span>
-                ) : (
-                    <span className="text-green-600 font-medium">
-                        In Stock
-                    </span>
-                ),
+                getStockStatus(dish.stock, dish.threshold),
         },
 
         {
@@ -153,35 +150,6 @@ export default function ViewDishes({
                             <Pencil size={16} /> Edit
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                            onClick={async () => {
-                                await updateDishStock({
-                                    id: dish._id as Id<"dishes">,
-                                    stock: dish.stock === 0 ? 10 : 0,
-                                });
-                            }}
-                            className="flex items-center gap-2"
-                        >
-                            {dish.stock === 0 ? (
-                                <>
-                                    <CheckCircle
-                                        size={16}
-                                        className="text-green-600"
-                                    />
-                                    Mark as In Stock
-                                </>
-                            ) : (
-                                <>
-                                    <Ban
-                                        size={16}
-                                        className="text-red-600"
-                                    />
-                                    Mark as Out of Stock
-                                </>
-                            )}
-                        </DropdownMenuItem>
-
-                        {/* ✅ SHADCN ALERT DIALOG DELETE */}
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem
@@ -233,9 +201,9 @@ export default function ViewDishes({
     return (
         <div className="space-y-6">
 
-            {/* SEARCH + FILTERS */}
             <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex flex-wrap gap-4 items-center">
+
                     <input
                         type="text"
                         placeholder="Search dishes..."
@@ -246,17 +214,24 @@ export default function ViewDishes({
 
                     <Select
                         value={selectedCategory}
-                        onValueChange={(value) => setSelectedCategory(value)}
+                        onValueChange={(value) =>
+                            setSelectedCategory(value)
+                        }
                     >
                         <SelectTrigger className="w-[180px] h-10 text-sm">
                             <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
 
                         <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="all">
+                                All Categories
+                            </SelectItem>
 
                             {categories.map((cat) => (
-                                <SelectItem key={cat._id} value={cat._id}>
+                                <SelectItem
+                                    key={cat._id}
+                                    value={String(cat._id)}
+                                >
                                     {cat.name}
                                 </SelectItem>
                             ))}
@@ -268,10 +243,12 @@ export default function ViewDishes({
                     {["all", "available", "out"].map((status) => (
                         <button
                             key={status}
-                            onClick={() => setAvailabilityFilter(status)}
+                            onClick={() =>
+                                setAvailabilityFilter(status)
+                            }
                             className={`px-3 py-1.5 rounded-md text-sm ${availabilityFilter === status
-                                ? "bg-gray-900 text-white"
-                                : "bg-gray-100"
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-gray-100"
                                 }`}
                         >
                             {status === "all"
@@ -290,7 +267,6 @@ export default function ViewDishes({
                 loading={!dishes}
             />
 
-            {/* SIDE DRAWER */}
             <SideDrawer
                 isOpen={!!viewDish}
                 onClose={() => setViewDish(null)}
@@ -325,14 +301,18 @@ export default function ViewDishes({
                         </div>
 
                         <div>
-                            <h3 className="font-semibold mb-2">Nutrition</h3>
+                            <h3 className="font-semibold mb-2">
+                                Nutrition
+                            </h3>
                             <p className="text-sm text-gray-600">
                                 {viewDish.nutrition}
                             </p>
                         </div>
 
                         <div>
-                            <h3 className="font-semibold mb-2">Description</h3>
+                            <h3 className="font-semibold mb-2">
+                                Description
+                            </h3>
                             <p className="text-sm text-gray-600">
                                 {viewDish.description}
                             </p>

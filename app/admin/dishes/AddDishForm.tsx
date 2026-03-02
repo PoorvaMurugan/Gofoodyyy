@@ -53,24 +53,30 @@ export default function AddDishForm({ editData, onClose }: Props) {
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    /* ---------------- PREFILL + RESET ---------------- */
     useEffect(() => {
-        if (editData) {
-            setForm({
-                name: editData.name,
-                categoryId: editData.categoryId,
-                price: String(editData.price),
-                serving: editData.serving,
-                calories: "",
-                protein: "",
-                carbs: "",
-                description: editData.description,
-                stock: String(editData.stock ?? ""),
-                threshold: String(editData.threshold ?? ""),
-                type: editData.type,
-                image: editData.image,
-                imageFile: null,
-            });
-        }
+        if (!editData) return;
+
+        setForm({
+            name: editData.name ?? "",
+            categoryId: editData.categoryId
+                ? String(editData.categoryId)
+                : "",
+            price: String(editData.price ?? ""),
+            serving: editData.serving ?? "",
+            calories: editData.calories ?? "",
+            protein: editData.protein ?? "",
+            carbs: editData.carbs ?? "",
+            description: editData.description ?? "",
+            stock: String(editData.stock ?? ""),
+            threshold: String(editData.threshold ?? ""),
+            type: editData.type ?? "veg",
+            image: editData.image ?? "",
+            imageFile: null,
+        });
+
+        setImageType("url");
+        setImageError(false);
     }, [editData]);
 
     /* ---------------- VALIDATION ---------------- */
@@ -79,34 +85,34 @@ export default function AddDishForm({ editData, onClose }: Props) {
         const newErrors: Record<string, string> = {};
 
         if (!form.name.trim())
-            newErrors.name = "Dish name is required";
+            newErrors.name = "Dish name required";
 
         if (!form.categoryId)
-            newErrors.categoryId = "Please select category";
+            newErrors.categoryId = "Select category";
 
         if (!form.price || Number(form.price) <= 0)
-            newErrors.price = "Enter valid price (> 0)";
+            newErrors.price = "Enter valid price";
 
         if (!form.serving.trim())
-            newErrors.serving = "Serving information required";
+            newErrors.serving = "Serving required";
 
         if (!form.description.trim())
             newErrors.description = "Description required";
 
         if (form.stock === "" || Number(form.stock) < 0)
-            newErrors.stock = "Enter valid stock quantity";
+            newErrors.stock = "Enter valid stock";
 
         if (form.threshold === "" || Number(form.threshold) < 0)
             newErrors.threshold = "Enter valid threshold";
 
         if (Number(form.calories) < 0)
-            newErrors.calories = "Calories cannot be negative";
+            newErrors.calories = "Invalid calories";
 
         if (Number(form.protein) < 0)
-            newErrors.protein = "Protein cannot be negative";
+            newErrors.protein = "Invalid protein";
 
         if (Number(form.carbs) < 0)
-            newErrors.carbs = "Carbs cannot be negative";
+            newErrors.carbs = "Invalid carbs";
 
         if (imageType === "url") {
             if (!form.image.trim()) {
@@ -115,13 +121,13 @@ export default function AddDishForm({ editData, onClose }: Props) {
                 try {
                     new URL(form.image);
                 } catch {
-                    newErrors.image = "Enter valid image URL";
+                    newErrors.image = "Invalid image URL";
                 }
             }
         }
 
         if (imageType === "upload" && !form.imageFile) {
-            newErrors.image = "Please upload image";
+            newErrors.image = "Upload image";
         }
 
         setErrors(newErrors);
@@ -140,7 +146,7 @@ export default function AddDishForm({ editData, onClose }: Props) {
                 : form.image;
 
         const dishPayload = {
-            name: form.name,
+            name: form.name.trim(),
             categoryId: form.categoryId as Id<"categories">,
             price: Number(form.price),
             serving: form.serving,
@@ -188,59 +194,71 @@ export default function AddDishForm({ editData, onClose }: Props) {
                         <Input
                             className={inputClass("name")}
                             value={form.name}
-                            onChange={(e) => {
-                                setForm({ ...form, name: e.target.value });
-                                setErrors({ ...errors, name: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, name: e.target.value })
+                            }
                         />
-                        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                        {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
                     </AdminFormField>
 
                     <AdminFormField label="Category">
                         <Select
-                            value={form.categoryId}
-                            onValueChange={(val) => {
-                                setForm({ ...form, categoryId: val });
-                                setErrors({ ...errors, categoryId: "" });
-                            }}
+                            value={form.categoryId || undefined}
+                            onValueChange={(val) =>
+                                setForm({ ...form, categoryId: val })
+                            }
                         >
                             <SelectTrigger className={inputClass("categoryId")}>
                                 <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
                                 {categories.map((cat) => (
-                                    <SelectItem key={cat._id} value={cat._id}>
+                                    <SelectItem
+                                        key={cat._id}
+                                        value={String(cat._id)}
+                                    >
                                         {cat.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        {errors.categoryId && <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>}
+                        {errors.categoryId && <p className="text-red-500 text-sm">{errors.categoryId}</p>}
                     </AdminFormField>
 
                     <AdminFormField label="Price">
                         <Input
                             type="number"
-                            className={inputClass("price")}
                             value={form.price}
-                            onChange={(e) => {
-                                setForm({ ...form, price: e.target.value });
-                                setErrors({ ...errors, price: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, price: e.target.value })
+                            }
                         />
-                        {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
                     </AdminFormField>
 
                     <AdminFormField label="Serving">
                         <Input
-                            className={inputClass("serving")}
                             value={form.serving}
-                            onChange={(e) => {
-                                setForm({ ...form, serving: e.target.value });
-                                setErrors({ ...errors, serving: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, serving: e.target.value })
+                            }
                         />
-                        {errors.serving && <p className="text-red-500 text-sm mt-1">{errors.serving}</p>}
+                    </AdminFormField>
+
+                    <AdminFormField label="Food Type">
+                        <Select
+                            value={form.type}
+                            onValueChange={(val: "veg" | "nonveg") =>
+                                setForm({ ...form, type: val })
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="veg">Veg</SelectItem>
+                                <SelectItem value="nonveg">Non Veg</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </AdminFormField>
 
                 </div>
@@ -250,40 +268,54 @@ export default function AddDishForm({ editData, onClose }: Props) {
                     <AdminFormField label="Calories">
                         <Input
                             type="number"
-                            className={inputClass("calories")}
                             value={form.calories}
-                            onChange={(e) => {
-                                setForm({ ...form, calories: e.target.value });
-                                setErrors({ ...errors, calories: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, calories: e.target.value })
+                            }
                         />
-                        {errors.calories && <p className="text-red-500 text-sm mt-1">{errors.calories}</p>}
                     </AdminFormField>
 
                     <AdminFormField label="Protein (g)">
                         <Input
                             type="number"
-                            className={inputClass("protein")}
                             value={form.protein}
-                            onChange={(e) => {
-                                setForm({ ...form, protein: e.target.value });
-                                setErrors({ ...errors, protein: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, protein: e.target.value })
+                            }
                         />
-                        {errors.protein && <p className="text-red-500 text-sm mt-1">{errors.protein}</p>}
                     </AdminFormField>
 
                     <AdminFormField label="Carbs (g)">
                         <Input
                             type="number"
-                            className={inputClass("carbs")}
                             value={form.carbs}
-                            onChange={(e) => {
-                                setForm({ ...form, carbs: e.target.value });
-                                setErrors({ ...errors, carbs: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, carbs: e.target.value })
+                            }
                         />
-                        {errors.carbs && <p className="text-red-500 text-sm mt-1">{errors.carbs}</p>}
+                    </AdminFormField>
+                </div>
+
+                {/* STOCK */}
+                <div className="grid md:grid-cols-2 gap-6">
+                    <AdminFormField label="Stock Quantity">
+                        <Input
+                            type="number"
+                            value={form.stock}
+                            onChange={(e) =>
+                                setForm({ ...form, stock: e.target.value })
+                            }
+                        />
+                    </AdminFormField>
+
+                    <AdminFormField label="Low Stock Threshold">
+                        <Input
+                            type="number"
+                            value={form.threshold}
+                            onChange={(e) =>
+                                setForm({ ...form, threshold: e.target.value })
+                            }
+                        />
                     </AdminFormField>
                 </div>
 
@@ -291,10 +323,9 @@ export default function AddDishForm({ editData, onClose }: Props) {
                 <AdminFormField label="Dish Image Source">
                     <Select
                         value={imageType}
-                        onValueChange={(val: "url" | "upload") => {
-                            setImageType(val);
-                            setErrors({ ...errors, image: "" });
-                        }}
+                        onValueChange={(val: "url" | "upload") =>
+                            setImageType(val)
+                        }
                     >
                         <SelectTrigger>
                             <SelectValue />
@@ -309,21 +340,17 @@ export default function AddDishForm({ editData, onClose }: Props) {
                 {imageType === "url" && (
                     <AdminFormField label="Image URL">
                         <Input
-                            className={inputClass("image")}
                             value={form.image}
-                            onChange={(e) => {
-                                setForm({ ...form, image: e.target.value });
-                                setErrors({ ...errors, image: "" });
-                            }}
+                            onChange={(e) =>
+                                setForm({ ...form, image: e.target.value })
+                            }
                         />
-                        {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
-
-                        {form.image && !errors.image && (
+                        {form.image && (
                             <div className="mt-4">
                                 <img
                                     src={form.image}
-                                    onError={() => setImageError(true)}
                                     className="h-40 rounded-md object-cover border"
+                                    onError={() => setImageError(true)}
                                 />
                                 {imageError && (
                                     <p className="text-red-500 text-sm mt-2">
@@ -337,18 +364,17 @@ export default function AddDishForm({ editData, onClose }: Props) {
 
                 {imageType === "upload" && (
                     <AdminFormField label="Upload Image">
-                        <div className={`border border-dashed p-6 rounded-md text-center relative cursor-pointer hover:bg-gray-50 ${inputClass("image")}`}>
+                        <div className="border border-dashed p-6 rounded-md text-center relative cursor-pointer hover:bg-gray-50">
                             <input
                                 type="file"
                                 accept="image/*"
                                 className="absolute inset-0 w-full h-full opacity-0"
-                                onChange={(e) => {
+                                onChange={(e) =>
                                     setForm({
                                         ...form,
                                         imageFile: e.target.files?.[0] || null,
-                                    });
-                                    setErrors({ ...errors, image: "" });
-                                }}
+                                    })
+                                }
                             />
 
                             {!form.imageFile ? (
@@ -363,63 +389,28 @@ export default function AddDishForm({ editData, onClose }: Props) {
                                 />
                             )}
                         </div>
-                        {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
                     </AdminFormField>
                 )}
-
-                {/* STOCK */}
-                <div className="grid md:grid-cols-2 gap-6">
-                    <AdminFormField label="Stock">
-                        <Input
-                            type="number"
-                            className={inputClass("stock")}
-                            value={form.stock}
-                            onChange={(e) => {
-                                setForm({ ...form, stock: e.target.value });
-                                setErrors({ ...errors, stock: "" });
-                            }}
-                        />
-                        {errors.stock && <p className="text-red-500 text-sm mt-1">{errors.stock}</p>}
-                    </AdminFormField>
-
-                    <AdminFormField label="Low Stock Threshold">
-                        <Input
-                            type="number"
-                            className={inputClass("threshold")}
-                            value={form.threshold}
-                            onChange={(e) => {
-                                setForm({ ...form, threshold: e.target.value });
-                                setErrors({ ...errors, threshold: "" });
-                            }}
-                        />
-                        {errors.threshold && <p className="text-red-500 text-sm mt-1">{errors.threshold}</p>}
-                    </AdminFormField>
-                </div>
-
-                {/* DESCRIPTION */}
-                <AdminFormField label="Description">
-                    <Textarea
-                        rows={4}
-                        className={inputClass("description")}
-                        value={form.description}
-                        onChange={(e) => {
-                            setForm({ ...form, description: e.target.value });
-                            setErrors({ ...errors, description: "" });
-                        }}
-                    />
-                    {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-                </AdminFormField>
 
                 {/* ACTIONS */}
                 <div className="flex justify-end gap-2 pt-6 border-t">
                     {onClose && (
-                        <Button type="button" variant="outline" onClick={onClose}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                        >
                             Cancel
                         </Button>
                     )}
 
                     <Button type="submit" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 animate-spin" size={16} />}
+                        {loading && (
+                            <Loader2
+                                className="mr-2 animate-spin"
+                                size={16}
+                            />
+                        )}
                         {isEdit ? "Save Changes" : "Add Dish"}
                     </Button>
                 </div>
